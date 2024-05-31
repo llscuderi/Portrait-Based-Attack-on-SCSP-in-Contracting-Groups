@@ -1,3 +1,3 @@
 G:=AG_Groups.GrigorchukGroup;
-AssignGeneratorVariables(G);AssignGeneratorVariables(G);
-changes
+AssignGeneratorVariables(G);
+ more changes
