@@ -1,4 +1,5 @@
 #f:="C:/Users/savchuk/Documents/GitHub/Group_Based_Crypto/CSP_attack.g";
+#f:="/Users/llscuderi/Documents/GitHub/Group_Based_Crypto/CSP_attack.g";
 G:=AG_Groups.GrigorchukGroup;
 AssignGeneratorVariables(G);
 G3:=PermGroupOnLevel(G,3);
