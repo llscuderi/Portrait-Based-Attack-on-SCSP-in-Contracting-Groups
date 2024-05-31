@@ -8,3 +8,11 @@ AssignGeneratorVariables(G);
 G3:=PermGroupOnLevel(G,3);
 G4:=PermGroupOnLevel(G,4);
 
+f:=function(g)
+	local i,L;
+	L:=[];
+	for i in [1..3] do
+		Add(L,g^i);
+	od;
+	return L;
+end;
