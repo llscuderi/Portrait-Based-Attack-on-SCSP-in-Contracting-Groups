@@ -3,17 +3,22 @@
 #Read("/Users/llscuderi/Documents/GitHub/Group_Based_Crypto/CSP_attack.g");
 
 
-# Hardcoding some things for testing 
-G:=AG_Groups.GrigorchukGroup;
-AssignGeneratorVariables(G);
+AreNotConjugate:=function(G,a,b,levels)
+	local l, Glev;
+	for l in [1..levels] do
+		# this would be better if we precomputed these somewhere
+		Glev:= PermGroupOnLevel(G, l);
+		if not IsConjugate(Glev, PermOnLevel(a,l), PermOnLevel(b,l)) then
+			# Return true if NOT conjugate 
+			return true; 
+		else
+			return false;
+		fi;
+	od;
+end;
 
-g:=a*b;
 
-r:=a^2*b*a;
-Print(PermOnLevel(r,1));
-h:= r^-1*g*r;
-
-ConjugatorEvenFirstLevel:=function(G,g,h, G5)
+ConjugatorEvenFirstLevel:=function(G,g,h)
 	local g0, g1, h0, h1;
 	g0 := Section(g,1);
 	g1 := Section(g,2);
@@ -26,13 +31,11 @@ ConjugatorEvenFirstLevel:=function(G,g,h, G5)
 		# eventually we should make an IsNotConjugate function that
 		# tests multiple levels
 
-		# Case 1: tests if r is NOT even
-		if not IsConjugate(G5, PermOnLevel(g0,5), PermOnLevel(h0,5)) 
-		or not IsConjugate(G5, PermOnLevel(g1,5), PermOnLevel(h1,5)) then
+		# Case 1: if the following aren't conjugate, r isn't even
+		if AreNotConjugate(G,g0,h0,5) or AreNotConjugate(G,g1,h1,5) then
 			return false;
-		# Case 2: tests if r is even
-		elif not IsConjugate(G5, PermOnLevel(g0,5), PermOnLevel(h1,5)) 
-		or not IsConjugate(G5, PermOnLevel(g1,5), PermOnLevel(h0,5)) then
+		# Case 2: if the following aren't conjugate, r is even
+		elif AreNotConjugate(G,g0,h1,5) or AreNotConjugate(G,g1,h0,5) then
 			return true;
 		else
 			return fail;
@@ -40,22 +43,50 @@ ConjugatorEvenFirstLevel:=function(G,g,h, G5)
 	
 	# Case B: g odd
 	else
-		if not IsConjugate(G5, PermOnLevel(g0*g1,5), PermOnLevel(h0*h1,5))  then
-			return false;
-		elif not IsConjugate(G5, PermOnLevel(g1,5), PermOnLevel(h0,5))
-		or not IsConjugate(G5, PermOnLevel(g0,5), PermOnLevel(h1,5)) then
-			return true;
-		else
-			return fail;
-		fi;
+		Print("g odd");
+		return fail;
 	fi;
 end;
 
-ConjugatorPortrait:=function(G,g,h)
-	#for now this just calls the function we want to test
-	local G5;
-	G5:=PermGroupOnLevel(G,5);
-	Print("\n",ConjugatorEvenFirstLevel(G,g,h,G5));
+ConjugatorPortraitRecursive:=function(G,g,h,level)
+	# Build as much of the portrait of r as we can just by traversing even vertices
+	local r_partial_portrait, g0, g1, h0, h1;
+	r_partial_portrait:=[];
+	
+	g0:=Section(g,1);
+	g1:=Section(g,2);
+	h0:=Section(h,1);
+	h1:=Section(h,2);
+
+
+	Print(r_partial_portrait);
+
+	ConjugatorEvenFirstLevel := ConjugatorEvenFirstLevel(G,g,h);	
+
+	if level=0 then
+		Add(r_partial_portrait, []);
+	fi;
+	
+	if ConjugatorEvenFirstLevel = fail then
+		Print("Failed");
+		Add(r_partial_portrait, ["x"]);
+		Print(r_partial_portrait);
+
+	elif ConjugatorEvenFirstLevel then
+		Print("Even");
+		Add(r_partial_portrait, ());
+		Add(r_partial_portrait, ConjugatorPortraitRecursive(G, g0, h0, level-1));
+		Add(r_partial_portrait, ConjugatorPortraitRecursive(G, g1, h1, level-1));
+	else 
+		Print("Odd");
+		Add(r_partial_portrait, (1,2));	
+		#Add(r_partial_portrait, 
+		#	ConjugatorPortraitRecursive(G, g0, h1, level-1));
+		#Add(r_partial_portrait, 
+		#	ConjugatorPortraitRecursive(G, g1, h0, level-1));
+	fi;
+
+	return r_partial_portrait;				
 end;
 
-ConjugatorPortrait(G,g,h);
+
