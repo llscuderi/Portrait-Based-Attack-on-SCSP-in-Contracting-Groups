@@ -7,6 +7,7 @@ AreNotConjugate:=function(G,a,b,levels)
 	local l, Glev;
 	for l in [1..levels] do
 		# this would be better if we precomputed these somewhere
+		# but it's fast so we won't worry about it for now
 		Glev:= PermGroupOnLevel(G, l);
 		if not IsConjugate(Glev, PermOnLevel(a,l), PermOnLevel(b,l)) then
 			# Return true if NOT conjugate 
@@ -28,9 +29,6 @@ ConjugatorEvenFirstLevel:=function(G,g,h)
 
 	# Case A: g even
 	if PermOnLevel(g,1) = () then
-		# eventually we should make an IsNotConjugate function that
-		# tests multiple levels
-
 		# Case 1: if the following aren't conjugate, r isn't even
 		if AreNotConjugate(G,g0,h0,5) or AreNotConjugate(G,g1,h1,5) then
 			return false;
@@ -58,9 +56,6 @@ ConjugatorPortraitRecursive:=function(G,g,h,level)
 	h0:=Section(h,1);
 	h1:=Section(h,2);
 
-
-	Print(r_partial_portrait);
-
 	ConjugatorEvenFirstLevel := ConjugatorEvenFirstLevel(G,g,h);	
 
 	if level=0 then
@@ -80,10 +75,8 @@ ConjugatorPortraitRecursive:=function(G,g,h,level)
 	else 
 		Print("Odd");
 		Add(r_partial_portrait, (1,2));	
-		#Add(r_partial_portrait, 
-		#	ConjugatorPortraitRecursive(G, g0, h1, level-1));
-		#Add(r_partial_portrait, 
-		#	ConjugatorPortraitRecursive(G, g1, h0, level-1));
+		Add(r_partial_portrait, ConjugatorPortraitRecursive(G, g0, h1, level-1));
+		Add(r_partial_portrait, ConjugatorPortraitRecursive(G, g1, h0, level-1));
 	fi;
 
 	return r_partial_portrait;				
