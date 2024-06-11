@@ -92,7 +92,7 @@ ConjugatorPortraitRecursive:=function( g_list, h_list, lev, PermGroups )
 				if ConjEven then 
 
 					# If we're as deep as we want, return portrait with placeholders 
-					if lev = 0 then
+					if lev = 1 then
 						return [(), 1, 1];
 					fi;	
 					
@@ -148,7 +148,7 @@ ConjugatorPortraitRecursive:=function( g_list, h_list, lev, PermGroups )
 				# If r is odd
 				else 
 					# If we're as deep as we want, return portrait with placeholders 
-					if lev = 0 then
+					if lev = 1 then
 						return [(1,2), 1, 1];
 					fi;	
 					
