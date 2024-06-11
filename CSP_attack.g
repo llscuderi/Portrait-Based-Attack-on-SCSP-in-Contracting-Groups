@@ -48,14 +48,43 @@ ConjugatorEvenFirstLevel:=function(PermGroups,g,h)
 	fi;	
 end;
 
-
+# Returns list of indices of elements having perm (1,2) on 1st level
+IdxsOfOdds:=function(g_list)
+	local odd_idxs, i;
+	odd_idxs:=[];
+	for i in [1..Size(g_list)] do	
+		if PermOnLevel(g_list[i], 1) = (1,2) then
+			Add(odd_idxs, i);
+		fi;
+	od;
+	return odd_idxs;
+end;
+	
+# Appends to g_list and h_list multiples of odd elements of the lists
+ExtendLists:=function(g_list, h_list, odd_idxs)
+	local i, j;
+	for i in [1..Size(odd_idxs)-1] do
+		for j in [i+1..Size(odd_idxs)] do
+			Add(g_list, g_list[odd_idxs[i]]*g_list[odd_idxs[j]]);
+			Add(h_list, h_list[odd_idxs[i]]*h_list[odd_idxs[j]]);
+		od;
+	od;
+	return [g_list, h_list];
+end;
 
 ConjugatorPortraitRecursive:=function( g_list, h_list, lev, PermGroups )
 	
-	local i, ConjEven, g_list_r0, h_list_r0, g_list_r1, h_list_r1, r0, r1, idx;
+	local i, ConjEven, g_list_r0, h_list_r0, g_list_r1, h_list_r1, r0, r1,
+		odd_g_idxs, gh_extended;
+	
+	odd_g_idxs := IdxsOfOdds( g_list );
+	gh_extended := ExtendLists( g_list, h_list, odd_g_idxs );
+	g_list := gh_extended[1];
+	h_list := gh_extended[2];
 	
 	for i in [1..Size(g_list)] do
-		if PermOnLevel( g_list[i], 1 ) = () then
+		# if g_i is even (note that g_list is only extended with even elements)
+		if not i in odd_g_idxs then
 			ConjEven := ConjugatorEvenFirstLevel( PermGroups, g_list[i], h_list[i] );
 			
 			if not ConjEven = fail then
@@ -86,15 +115,11 @@ ConjugatorPortraitRecursive:=function( g_list, h_list, lev, PermGroups )
 					# Recursive step: recover portrait of r0
 					r0 := ConjugatorPortraitRecursive( g_list_r0, h_list_r0, lev-1, PermGroups );
 
-					# pick an odd element of g_list
-					idx := -1;
-					#for i in [1..Size(g_list)] do
-					#	if PermOnLevel( g_list[i], 1 ) = (1,2) then
-					#		idx := i;
-					#		break;
-					#	fi; od;
+					# Should be: if not Size(odd_g_idxs) = 0, use odd_g_idxs[1] for relations
+					# else build new lists to recover r1
+					# For now, we build new lists for testing 
 					
-					if not idx = -1 then
+					if false then
 						# r1 = g0^-1*r0*h0, but we can't multiply portraits yet
 					else 
 													
@@ -115,7 +140,7 @@ ConjugatorPortraitRecursive:=function( g_list, h_list, lev, PermGroups )
 						od;
 						
 						# Recursive step: recover portrait of r1
-						r1 := ConjugatorPortraitRecursive( g_list_r0, h_list_r0, lev-1, PermGroups );
+						r1 := ConjugatorPortraitRecursive( g_list_r1, h_list_r1, lev-1, PermGroups );
 					fi;
 					
 					return [ (), r0, r1 ];
@@ -146,17 +171,11 @@ ConjugatorPortraitRecursive:=function( g_list, h_list, lev, PermGroups )
 					# Recursive step: recover portrait of r0
 					r0 := ConjugatorPortraitRecursive( g_list_r0, h_list_r0, lev-1, PermGroups );
 
-					# pick an odd element of g_list
-					idx := -1;
+					# Should be: if not Size(odd_g_idxs) = 0, use odd_g_idxs[1] for relations
+					# else build new lists to recover r1
+					# For now, we build new lists for testing 
 
-					#for i in [1..Size(g_list)] do
-					#	if PermOnLevel( g_list[i], 1 ) = (1,2) then
-					#		idx := i;
-					#		break;
-					#	fi; od;
-
-					
-					if not idx = -1 then
+					if false then
 						# r1 = g0^-1*r0*h0, but we can't multiply portraits yet
 					else 
 													
@@ -177,7 +196,7 @@ ConjugatorPortraitRecursive:=function( g_list, h_list, lev, PermGroups )
 						od;
 						
 						# Recursive step: recover portrait of r1
-						r1 := ConjugatorPortraitRecursive( g_list_r0, h_list_r0, lev-1, PermGroups );
+						r1 := ConjugatorPortraitRecursive( g_list_r1, h_list_r1, lev-1, PermGroups );
 					fi;
 					
 					return [ (1,2), r0, r1 ];
@@ -185,13 +204,13 @@ ConjugatorPortraitRecursive:=function( g_list, h_list, lev, PermGroups )
 			else
 				Print( i, " Failed\n" );
 				if i = Size(g_list) then 
-				return ["F1"];
+					return ["F1"];
 				fi;
 			fi;
 		else 
 			Print(i, " Odd\n");
 			if i = Size(g_list) then
-			return ["F2"];
+				return ["F2"];
 			fi;
 		fi;
 	od;	
@@ -199,7 +218,7 @@ ConjugatorPortraitRecursive:=function( g_list, h_list, lev, PermGroups )
 end;							
 						
 	
-# Eventually, third element is key length
+# Eventually, third argument is key length
 ConjugatorPortrait:=function( g_list, h_list, depth )
 	local G, PermGroups, portrait;
 	G:= GroupOfAutomFamily( FamilyObj( g_list[1] ) );
