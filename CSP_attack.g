@@ -2,6 +2,59 @@
 #Read("~/Documents/GitHub/Group_Based_Crypto/CSP_attack.g");
 #Read("/Users/llscuderi/Documents/GitHub/Group_Based_Crypto/CSP_attack.g");
 
+# Computes maximum level at which elements of length <= 2M contract to nucleus
+# Where M is maximum length of elements in the nucleus 
+2MDepth := function(G)
+	AG_UseRewritingSystem(G);
+	N:=FindNucleus(G)[1];
+	N_Lengths:=List(N, x -> Length(Word(x)));
+	M:=Maximum(N_Lengths);
+	AG_UpdateRewritingSystem(G, 2*M);
+	L := ListOfElements(G, 2*M);
+	L_Depths := List(L, x -> AutomPortraitDepth(x));
+	N := Maximum(L_Depths);
+	return N;
+end;
+
+# Computes upper bound for portrait depth for an element of length n
+MaxPortraitDepth := function(G, n)
+	N := 2MDepth(G);
+	a := LogInt(n, 2) + 1;
+	return N*(a+1);
+end;
+
+# Returns true if list L contains no repeat elements 
+NoRepeats := function(L)
+	local i, j, no_repeats;
+	no_repeats:= true;
+	for i in [1..Size(L)-1] do
+		for j in [i+1..Size(L)] do
+			if L[i] = L[j] then
+				# if 2 elements match, all elements do not differ
+				no_repeats := false;
+				return no_repeats;
+			fi;
+		od;
+	od;
+	return no_repeats;
+end;
+			
+
+# Finds the level at which all elements of the nucleus differ in permutation
+NucleusDistinctLevel := function(G)
+	local Nucleus, lev, L;
+	Nucleus := FindNucleus(G);
+	lev := 1;
+	while true do
+		L := List(Nucleus, x -> PermOnLevel(x, lev);
+		if NoRepeats(L) then
+			return lev;
+		else
+			lev := lev + 1;
+		fi;
+	od;
+end;
+
 # We precompute this list and pass it along with G to our funtctions
 ComputePermGroups:=function(G,l)
 	local PermGroups, i;
@@ -215,14 +268,15 @@ ConjugatorPortraitRecursive:=function( g_list, h_list, lev, PermGroups )
 		fi;
 	od;	
 					
-end;							
+end;	
 						
-	
-# Eventually, third argument is key length
-ConjugatorPortrait:=function( g_list, h_list, depth )
-	local G, PermGroups, portrait;
+						
+ConjugatorPortrait:=function( g_list, h_list, key_length )
+	local G, PermGroups, portrait, depth;
 	G:= GroupOfAutomFamily( FamilyObj( g_list[1] ) );
 	PermGroups:= ComputePermGroups( G, 10 );
+
+	depth := MaxPortraitDepth(G, key_length) + NucleusDistinctLevel(G);
 
 	portrait := ConjugatorPortraitRecursive( g_list, h_list, depth, PermGroups );
 
