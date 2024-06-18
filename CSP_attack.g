@@ -4,11 +4,8 @@
 
 # Computes maximum level at which elements of length <= 2M contract to nucleus
 # Where M is maximum length of elements in the nucleus 
-2MDepth := function(G)
-	AG_UseRewritingSystem(G);
-	N:=FindNucleus(G)[1];
-	N_Lengths:=List(N, x -> Length(Word(x)));
-	M:=Maximum(N_Lengths);
+2MDepth := function(G, M)
+local N, L, L_Depths;
 	AG_UpdateRewritingSystem(G, 2*M);
 	L := ListOfElements(G, 2*M);
 	L_Depths := List(L, x -> AutomPortraitDepth(x));
@@ -18,7 +15,15 @@ end;
 
 # Computes upper bound for portrait depth for an element of length n
 MaxPortraitDepth := function(G, n)
-	N := 2MDepth(G);
+	local N, M, N_Lengths, a;
+	AG_UseRewritingSystem(G);
+	N:=FindNucleus(G)[1];
+	N_Lengths:=List(N, x -> Length(Word(x)));
+	M:=Maximum(N_Lengths);
+	N := 2MDepth(G, M);
+	if n <= 2*M then
+		return N;
+	fi;
 	a := LogInt(n, 2) + 1;
 	return N*(a+1);
 end;
@@ -42,11 +47,11 @@ end;
 
 # Finds the level at which all elements of the nucleus differ in permutation
 NucleusDistinctLevel := function(G)
-	local Nucleus, lev, L;
-	Nucleus := FindNucleus(G);
+	local Nucleus, lev, L, N;
+	Nucleus := FindNucleus(G)[1];
 	lev := 1;
 	while true do
-		L := List(Nucleus, x -> PermOnLevel(x, lev);
+		L := List(Nucleus, x -> PermOnLevel(x, lev));
 		if NoRepeats(L) then
 			return lev;
 		else
