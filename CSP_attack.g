@@ -2,35 +2,65 @@
 #Read("~/Documents/GitHub/Group_Based_Crypto/CSP_attack.g");
 #Read("/Users/llscuderi/Documents/GitHub/Group_Based_Crypto/CSP_attack.g");
 
+# ----------------------------------------------------------------------------
+# ------ Functions for finding depth needed to recover conjugator ------------
+# -----------------------------------------------------------------------------
+
+
+# Find maximum length of elements in the nucleus
+NucleusMaxLength := function(G)
+	local nucleus, element_lengths, M; 
+	nucleus:=FindNucleus(G)[1];
+	element_lengths:=List(nucleus, x -> Length(Word(x)));
+	M:=Maximum(element_lengths);
+
+	return M;
+end;
+
+
 # Computes maximum level at which elements of length <= 2M contract to nucleus
 # Where M is maximum length of elements in the nucleus 
 2MDepth := function(G, M)
-local N, L, L_Depths;
-	AG_UpdateRewritingSystem(G, 2*M);
+	local N, L, L_Depths;
 	L := ListOfElements(G, 2*M);
 	L_Depths := List(L, x -> AutomPortraitDepth(x));
 	N := Maximum(L_Depths);
 	return N;
 end;
 
-# Computes upper bound for portrait depth for an element of length n
-MaxPortraitDepth := function(G, n)
-	local N, M, N_Lengths, a;
+# Computes maximum level at which elements of length <= kM contract to nucleus
+# Where M is maximum length of elements in the nucleus 
+kMDepth := function(G, M, k)
+	local N, L, L_Depths;
+	L := ListOfElements(G, k*M);
+	L_Depths := List(L, x -> AutomPortraitDepth(x));
+	N := Maximum(L_Depths);
+	return N;
+end;
+	
+# Computes upper bound for portrait depth for an element in group G of length n
+# uses max level at which elements of length <= k*M contract
+MaxPortraitDepth := function(G, n, k)
+	local M, N, a;
+
 	AG_UseRewritingSystem(G);
-	N:=FindNucleus(G)[1];
-	N_Lengths:=List(N, x -> Length(Word(x)));
-	M:=Maximum(N_Lengths);
-	N := 2MDepth(G, M);
-	if n <= 2*M then
+	AG_UpdateRewritingSystem(G, 4);
+
+	M := NucleusMaxLength(G);
+	N := kMDepth(G, M, k);
+
+	if n <= k*M then
 		return N;
 	fi;
-	a := LogInt(n, 2) + 1;
-	return N*(a+1);
+
+	a := LogInt(n, k) + 1;
+	return N*a + 2MDepth(G, M);
 end;
 
 # Returns true if list L contains no repeat elements 
 NoRepeats := function(L)
 	local i, j, no_repeats;
+
 	no_repeats:= true;
 	for i in [1..Size(L)-1] do
 		for j in [i+1..Size(L)] do
@@ -48,6 +78,7 @@ end;
 # Finds the level at which all elements of the nucleus differ in permutation
 NucleusDistinctLevel := function(G)
 	local Nucleus, lev, L, N;
+
 	Nucleus := FindNucleus(G)[1];
 	lev := 1;
 	while true do
@@ -59,6 +90,34 @@ NucleusDistinctLevel := function(G)
 		fi;
 	od;
 end;
+
+# For group G and fixed n, returns k between 2 and 4 for which
+# MaxPortraitDepth( G, n, k) is minimized 
+# Want to minimize N_k/(log_2(k)) (this is for large n)
+MinimizeMaxDepth := function(G)
+	local k, min, ratio, min_k, M, logn;
+		
+	M := NucleusMaxLength(G);
+	min := Float(kMDepth(G, M, 2)); 
+	min_k := 2;
+	Print("k = ", min_k, ", ratio = ", min, "\n");
+	
+	for k in [3..4] do
+		ratio := Float(kMDepth(G, M, k))/Log2(Float(k));
+		Print("k = ", k, ", ratio = ", ratio, "\n");
+		if ratio < min then
+			min := ratio;
+			min_k := k;
+		fi;
+	od;
+		
+	return min_k;
+end;
+			
+
+# ------------------------------------------------------
+# ------- Functions for recovering conjugator ----------
+# ------------------------------------------------------
 
 # We precompute this list and pass it along with G to our funtctions
 ComputePermGroups:=function(G,l)
@@ -274,14 +333,13 @@ ConjugatorPortraitRecursive:=function( g_list, h_list, lev, PermGroups )
 	od;	
 					
 end;	
-						
-						
+												
 ConjugatorPortrait:=function( g_list, h_list, key_length )
 	local G, PermGroups, portrait, depth;
 	G:= GroupOfAutomFamily( FamilyObj( g_list[1] ) );
 	PermGroups:= ComputePermGroups( G, 10 );
 
-	depth := MaxPortraitDepth(G, key_length) + NucleusDistinctLevel(G);
+	depth := MaxPortraitDepth(G, key_length, 2) + NucleusDistinctLevel(G);
 
 	portrait := ConjugatorPortraitRecursive( g_list, h_list, depth, PermGroups );
 

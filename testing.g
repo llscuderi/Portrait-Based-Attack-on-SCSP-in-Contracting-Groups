@@ -42,7 +42,7 @@ AsNestedList := function(r, lev)
 end;
 
 
-TestConjugatorPortraitGrigorchuk := function(list_size, level, conj_length, attempts)
+TestConjugatorPortraitGrigorchuk := function(list_size, conj_length, attempts)
   local successes, i, r_portrait;
   successes := 0;
 
@@ -52,8 +52,10 @@ TestConjugatorPortraitGrigorchuk := function(list_size, level, conj_length, atte
     r := RandomElementGrigorchuk(conj_length);
     h_list := List(g_list, x -> r^-1*x*r);
   
-    r_portrait := ConjugatorPortrait(g_list, h_list, level);
-    if r_portrait = AsNestedList(r, level) then
+    r_portrait := ConjugatorPortrait(g_list, h_list, conj_length);
+    # Realized we don't compute depth needed here, we'll check to level 10 for now 
+    # TODO: check to correct depth 
+    if r_portrait = AsNestedList(r, 10) then
         successes := successes + 1;
     fi;
   od;
