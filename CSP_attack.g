@@ -17,25 +17,13 @@ NucleusMaxLength := function(G)
 	return M;
 end;
 
-
-# Computes maximum level at which elements of length <= 2M contract to nucleus
-# Where M is maximum length of elements in the nucleus 
-2MDepth := function(G, M)
-	local N, L, L_Depths;
-	L := ListOfElements(G, 2*M);
-	L_Depths := List(L, x -> AutomPortraitDepth(x));
-	N := Maximum(L_Depths);
-	return N;
-end;
-
-# Computes maximum level at which elements of length <= kM contract to nucleus
-# Where M is maximum length of elements in the nucleus 
-kMDepth := function(G, M, k)
-	local N, L, L_Depths;
-	L := ListOfElements(G, k*M);
-	L_Depths := List(L, x -> AutomPortraitDepth(x));
-	N := Maximum(L_Depths);
-	return N;
+# Finds maximum level at which elements of length <= len contract to nucleus
+MaxContractingDepth := function(G, len)
+	local level, elements, elem_depths;
+	elements := ListOfElements(G, len);
+	elem_depths := List(elements, x -> AutomPortraitDepth(x));
+	level := Maximum(elem_depths);
+	return level;
 end;
 	
 # Computes upper bound for portrait depth for an element in group G of length n
@@ -43,18 +31,20 @@ end;
 MaxPortraitDepth := function(G, n, k)
 	local M, N, a;
 
+	# Question: if we use rewriting system and pass G to another function,
+	# Does the rewriting hold? 
 	AG_UseRewritingSystem(G);
 	AG_UpdateRewritingSystem(G, 4);
 
 	M := NucleusMaxLength(G);
-	N := kMDepth(G, M, k);
+	N := MaxContractingDepth(G, k*M);
 
 	if n <= k*M then
 		return N;
 	fi;
 
 	a := LogInt(n, k) + 1;
-	return N*a + 2MDepth(G, M);
+	return N*a + MaxContractingDepth(G, Ceil((k/k-1)*M));
 end;
 
 # Returns true if list L contains no repeat elements 
@@ -98,12 +88,13 @@ MinimizeMaxDepth := function(G)
 	local k, min, ratio, min_k, M, logn;
 		
 	M := NucleusMaxLength(G);
-	min := Float(kMDepth(G, M, 2)); 
+	min := Float(MaxContractingDepth(G, 2*M)); 
 	min_k := 2;
 	Print("k = ", min_k, ", ratio = ", min, "\n");
 	
+	# Warning: This takes a long time	
 	for k in [3..4] do
-		ratio := Float(kMDepth(G, M, k))/Log2(Float(k));
+		ratio := Float(MaxContractingDepth(G, k*M))/Log2(Float(k));
 		Print("k = ", k, ", ratio = ", ratio, "\n");
 		if ratio < min then
 			min := ratio;
@@ -113,7 +104,9 @@ MinimizeMaxDepth := function(G)
 		
 	return min_k;
 end;
-			
+
+# TODO: Some functions to tabulate k that minimizes the upper bound on portrait depth
+# One for specific small n, one general for large n			
 
 # ------------------------------------------------------
 # ------- Functions for recovering conjugator ----------
@@ -232,11 +225,13 @@ ConjugatorPortraitRecursive:=function( g_list, h_list, lev, PermGroups )
 					# Recursive step: recover portrait of r0
 					r0 := ConjugatorPortraitRecursive( g_list_r0, h_list_r0, lev-1, PermGroups );
 
-					# Should be: if not Size(odd_g_idxs) = 0, use odd_g_idxs[1] for relations
+					# Should be: if not Size(odd_g_idxs) = 0 and r0 didn't fail,
+					# use odd_g_idxs[1] for relations
 					# else build new lists to recover r1
 					# For now, we build new lists for testing 
 					
 					if false then
+						# TODO
 						# r1 = g0^-1*r0*h0, but we can't multiply portraits yet
 					else 
 													
@@ -259,6 +254,8 @@ ConjugatorPortraitRecursive:=function( g_list, h_list, lev, PermGroups )
 						# Recursive step: recover portrait of r1
 						r1 := ConjugatorPortraitRecursive( g_list_r1, h_list_r1, lev-1, PermGroups );
 					fi;
+
+					# TODO: If we get r1 but not r0, and we have an odd g, recover r0 from r1
 					
 					return [ (), r0, r1 ];
 
@@ -293,6 +290,7 @@ ConjugatorPortraitRecursive:=function( g_list, h_list, lev, PermGroups )
 					# For now, we build new lists for testing 
 
 					if false then
+						# TODO
 						# r1 = g0^-1*r0*h0, but we can't multiply portraits yet
 					else 
 													
@@ -315,19 +313,23 @@ ConjugatorPortraitRecursive:=function( g_list, h_list, lev, PermGroups )
 						# Recursive step: recover portrait of r1
 						r1 := ConjugatorPortraitRecursive( g_list_r1, h_list_r1, lev-1, PermGroups );
 					fi;
+
+					# TODO: If we get r1 but not r0, and we have an odd g, recover r0 from r1
 					
 					return [ (1,2), r0, r1 ];
 				fi;
 			else
+				# TODO: these print statements were for testing, do something more useful here
 				Print( i, " Failed\n" );
 				if i = Size(g_list) then 
-					return ["F1"];
+					return ["F"];
 				fi;
 			fi;
 		else 
+			# TODO: for testing, do something more useful here
 			Print(i, " Odd\n");
 			if i = Size(g_list) then
-				return ["F2"];
+				return ["F"];
 			fi;
 		fi;
 	od;	
@@ -343,6 +345,7 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 
 	portrait := ConjugatorPortraitRecursive( g_list, h_list, depth, PermGroups );
 
-	return portrait;
+	# Returns depth as well for checking accuracy
+	return [portrait, depth];
 
 end;

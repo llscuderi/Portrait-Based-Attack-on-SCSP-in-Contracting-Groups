@@ -1,25 +1,26 @@
 # Read("C:/Users/savchuk/Documents/GitHub/Group_Based_Crypto/CSP_attack.g");
-# Read("C:/Users/savchuk/Documents/GitHub/Group_Based_Crypto/random_grigorchuk.g");
+# Read("C:/Users/savchuk/Documents/GitHub/Group_Based_Crypto/random_element.g");
 # Read("C:/Users/savchuk/Documents/GitHub/Group_Based_Crypto/testing.g");
 
 # Read("~/Documents/GitHub/Group_Based_Crypto/CSP_attack.g");
-# Read("~/Documents/GitHub/Group_Based_Crypto/random_grigorchuk.g");
+# Read("~/Documents/GitHub/Group_Based_Crypto/random_element.g");
 # Read("~/Documents/GitHub/Group_Based_Crypto/testing.g");
 
 
 # Read("/Users/llscuderi/Documents/GitHub/Group_Based_Crypto/CSP_attack.g");
-# Read("/Users/llscuderi/Documents/GitHub/Group_Based_Crypto/random_grigorchuk.g");
+# Read("/Users/llscuderi/Documents/GitHub/Group_Based_Crypto/random_element.g");
 # Read("/Users/llscuderi/Documents/GitHub/Group_Based_Crypto/testing.g");
 
 # Note: Need to load CSP_attack.g and random_grigorchuk.g first 
+# TODO: Find a way to import files automatically if a way exists
 
 # ---- Prelims ----
 
 LoadPackage("automgrp");
 G := AG_Groups.GrigorchukGroup;
 
-# ---- Functions useful for testing ----
 
+# ---- Functions for testing ----
 
 # Returns element in the same format as output of ConjugatorPortrait
 # This way, we can check if the output is equal to the actual conjugator
@@ -38,24 +39,26 @@ AsNestedList := function(r, lev)
     
     return [(1,2), AsNestedList(Section(r,1), lev-1), AsNestedList(Section(r,2), lev-1)];
   fi;
-
 end;
 
-
-TestConjugatorPortraitGrigorchuk := function(list_size, conj_length, attempts)
-  local successes, i, r_portrait;
+# Tests the ConjugatorPortrait function in specified group G
+TestConjugatorPortrait := function(G, list_size, conj_length, attempts)
+  local successes, i, g_list, r, h_list, result, r_portrait, depth;
   successes := 0;
 
   for i in [1..attempts] do
 
+    # TODO: Do we want g's of specified length? 
     g_list := List([1..list_size], x -> Random(G));
-    r := RandomElementGrigorchuk(conj_length);
+    r := Random_Element(conj_length);
     h_list := List(g_list, x -> r^-1*x*r);
   
-    r_portrait := ConjugatorPortrait(g_list, h_list, conj_length);
-    # Realized we don't compute depth needed here, we'll check to level 10 for now 
-    # TODO: check to correct depth 
-    if r_portrait = AsNestedList(r, 10) then
+    # ConjugatorPortrait returns list [portrait, depth]
+    result := ConjugatorPortrait(g_list, h_list, conj_length);
+    r_portrait := result[1];
+    depth := result[2];
+
+    if r_portrait = AsNestedList(r, depth) then
         successes := successes + 1;
     fi;
   od;
