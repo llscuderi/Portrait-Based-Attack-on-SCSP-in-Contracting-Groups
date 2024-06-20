@@ -41,7 +41,7 @@ PermOfSection := function (p,lev,v)
     fi;
 end;
 
-#This function takes a group element in mask format <mask_element> and its level <lev> as input.
+#This function takes a group element in mask format <mask_element> and level <lev> for the required portrait.
 #It returns the element as portrait developed up till the level <lev>.
 MaskToPortrait := function(mask_element, lev)
 
@@ -64,10 +64,25 @@ end;
 
 ############# PORTRAIT TO MASK ELEMENT ##############
 
+mask_one_ext_boundary := function(mask_element) 
+
+    local i, new_boundary ;
+
+    new_boundary := [] ;
+
+    for i in mask_element[1]
+
+        do 
+            Append (new_boundary , Sections(i)) ; 
+        od;
+
+    return new_boundary ;
+end;
+
 
 PortraitToMaskBoundary := function(portrait , lev)
 
-    local i , boundary_list , flat_list ;
+    local i , j , k , boundary_list , flat_list , initial_level , ext_iter ;
 
     flat_list     := Flat(portrait) ;
     boundary_list := [] ;
@@ -78,6 +93,21 @@ PortraitToMaskBoundary := function(portrait , lev)
             Append(boundary_list,[flat_list[i]]) ;
             fi;
         od;
+
+    initial_level := Log(Length(boundary_list),2) ;
+    
+    ext_iter := lev - initial_level ; 
+    #Print(ext_iter,"\n");
+
+    if ext_iter > 0 then
+        for j in [1..ext_iter]
+            do 
+                boundary_list := mask_one_ext_boundary([boundary_list]);
+            od;
+            
+        elif    
+            ext_iter < 0 then Error("PortraitToMaskBoundary: <lev> cannot be smaller than the depth of the portrait");
+    fi;
 
     return boundary_list ;
 end;
@@ -115,7 +145,7 @@ end;
 #This function takes portrait <portrait> and its level <lev> as input.
 #It returns the element in mask format developed at the level <lev>.
 
-PortaitToMask := function(portrait , lev)
+PortraitToMask := function(portrait , lev)
 
     local mask_element ;
 
