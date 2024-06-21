@@ -50,7 +50,7 @@ TestConjugatorPortrait := function(G, list_size, conj_length, attempts)
 
     # TODO: Do we want g's of specified length? 
     g_list := List([1..list_size], x -> Random(G));
-    r := Random_Element(conj_length);
+    r := Random_Element(conj_length, G);
     h_list := List(g_list, x -> r^-1*x*r);
   
     # ConjugatorPortrait returns list [portrait, depth]
