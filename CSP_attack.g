@@ -135,12 +135,14 @@ end;
 # ------------------------------------------------------------------------------------
 												
 ConjugatorPortrait:=function( g_list, h_list, key_length )
-	local G, Nucleus, portrait, contracting_depth, PermGroups, AreNotConjugate, ConjugatorEvenFirstLevel, 
+	local G, Nucleus, placeholder, portrait, contracting_depth, PermGroups, AreNotConjugate, ConjugatorEvenFirstLevel, 
 		NucleusDistinctLevel, nucleus_distinct_level, N_perms, N_masks, NucleusElementByPortrait, MaskToNucleusElement,
 			ConjugatorPortraitRecursive, i, odd_g_idxs, gh_extended ;
 	
 	G:= GroupOfAutomFamily( FamilyObj( g_list[1] ) );
 	Nucleus := FindNucleus(G)[1];
+
+	placeholder := g_list[1];
 
 	# We precompute this list because it takes a while 
 	PermGroups := ComputePermGroups( G, 10 );
@@ -200,22 +202,28 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 	nucleus_distinct_level := NucleusDistinctLevel(G);
 	N_perms := List(Nucleus, x -> PermOnLevel(x, nucleus_distinct_level));
 
+	Print("N_perms:" , N_perms, "\n");
+
 	N_masks := List(Nucleus, x -> mask_function(x,1)); 
 
 	# If a nested portrait is certainly in the nucleus, identify it by permutation
 	NucleusElementByPortrait := function( port )
-		
-		for i in Size(Nucleus) do
+	
+		Print("Portrait passed to NEBP:", port, "\n");
+		Print("Permutation:", PermutationOfNestedPortrait(port, nucleus_distinct_level), "\n"); 
+	
+		for i in [1..Size(Nucleus)] do
 			if PermutationOfNestedPortrait(port, nucleus_distinct_level) = N_perms[i] then
 				return Nucleus[i];
 			fi;
 		od;
 		
 		# This should never happen if we do everything right
+		# TODO: it does, in fact, happen
 		return fail;
 	end;
 
-	# TODO: function to take mask of depth 1 ([[word, word], perm]) 
+	# function to take mask of depth 1 ([[word, word], perm]) 
 	# and if it is in the nucleus, return element of nucleus
 	MaskToNucleusElement := function( mask )
 		
@@ -250,7 +258,7 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 						# Possible source of error - pretty sure that perm we add on contracting_depth
 						# counts toward nucleus_distinct_level
 						if lev = contracting_depth + nucleus_distinct_level then
-							return [[(), [1], [1]], 1];
+							return [[(), [placeholder], [placeholder]], 1];
 						fi;
 
 						
@@ -389,7 +397,7 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 						# Possible source of error - pretty sure that perm we add on contracting_depth
 						# counts toward nucleus_distinct_level
 						if lev = contracting_depth + nucleus_distinct_level then
-							return [[(1,2), [1], [1]], 1];
+							return [[(1,2), [placeholder], [placeholder]], 1];
 						fi;	
 						
 						# Build new lists to recover r0
