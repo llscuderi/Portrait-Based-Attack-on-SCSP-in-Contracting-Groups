@@ -50,7 +50,7 @@ MaskToPortrait := function(mask_element, lev)
     p     := mask_element[2] ;
     
     if 
-        lev = 0 then return mask_element[1][1];
+        lev = 0 then return [mask_element[1][1]];
     fi;
     
     if
@@ -59,7 +59,7 @@ MaskToPortrait := function(mask_element, lev)
         s:=(1,2); 
     fi;
     
-    return [s,MaskToPortrait([mask_element[1]{[1..2^(lev-1)]},PermOfSection(p,lev,1)],lev-1),MaskToPortrait([mask_element[1]{[2^(lev-1)+1..2^lev]},PermOfSection(p,lev,2)],lev-1)];
+    return [ s, MaskToPortrait([mask_element[1]{[1..2^(lev-1)]}, PermOfSection(p,lev,1)],lev-1), MaskToPortrait([mask_element[1]{[2^(lev-1)+1..2^lev]}, PermOfSection(p,lev,2)],lev-1) ];
 end;
 
 ############# PORTRAIT TO MASK ELEMENT ##############
