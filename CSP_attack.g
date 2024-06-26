@@ -208,26 +208,28 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 
 	# If a nested portrait is certainly in the nucleus, identify it by permutation
 	NucleusElementByPortrait := function( port )
+		local portrait_permutation;
+
+		portrait_permutation := PermutationOfNestedPortrait(port, nucleus_distinct_level);
 	
 		Print("Portrait passed to NEBP:", port, "\n");
-		Print("Permutation:", PermutationOfNestedPortrait(port, nucleus_distinct_level), "\n"); 
-	
+		Print("Permutation:", portrait_permutation, "\n"); 
+
+			
 		for i in [1..Size(Nucleus)] do
-			if PermutationOfNestedPortrait(port, nucleus_distinct_level) = N_perms[i] then
+			if portrait_permutation = N_perms[i] then
 				return Nucleus[i];
 			fi;
 		od;
-		
-		# This should never happen if we do everything right
-		# TODO: it does, in fact, happen
-		return fail;
+	
+		Error("Did not reach element of the nucleus at contracting_depth");	
 	end;
 
 	# function to take mask of depth 1 ([[word, word], perm]) 
 	# and if it is in the nucleus, return element of nucleus
 	MaskToNucleusElement := function( mask )
 		
-		for i in Size(Nucleus) do
+		for i in [1..Size(Nucleus)] do
 			if mask = N_masks[i] then 
 				return Nucleus[i];
 			fi;
@@ -241,308 +243,240 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 	# TODO (eventually): Refactor for less repeat code 
 	ConjugatorPortraitRecursive :=function( g_list, h_list, lev)
 	
-		local i, ConjEven, g_list_r0, h_list_r0, g_list_r1, h_list_r1, r0, r1,
+		local i, ConjEven, perm, g_list_r0, h_list_r0, g_list_r1, h_list_r1, r0, r1,
 			r0_portrait, r1_portrait, r0_mask, r1_mask, odd_g, odd_h, r0_TA, r1_TA, 
 			g0_TA, g1_TA, h0_TA, portrait_depth, nucleus_element;
+
+		Print("Level: ", lev, "\n");
+		Print("g_list: ", g_list, "\n");
 		
+		odd_g_idxs := IdxsOfOdds( g_list );
+
 		for i in [1..Size(g_list)] do
-			# if g_i is even (note that g_list is only extended with even elements, so odd_g_idxs need not be updated)
 			if not i in odd_g_idxs then
-				ConjEven := ConjugatorEvenFirstLevel(g_list[i], h_list[i] );
-				
-				if not ConjEven = fail then
-					# ------------------------------------ If r is even -------------------------------------
-					if ConjEven then 
-	
-						# If we're as deep as we need, return portrait with placeholders
-						# Possible source of error - pretty sure that perm we add on contracting_depth
-						# counts toward nucleus_distinct_level
-						if lev = contracting_depth + nucleus_distinct_level then
-							return [[(), [placeholder], [placeholder]], 1];
-						fi;
+				ConjEven := ConjugatorEvenFirstLevel( g_list[i], h_list[i] );
 
-						
-						# Build new lists to recover r0
-						g_list_r0 := [];
-						h_list_r0 := [];
-						for i in [1..Size(g_list)] do
-							# If g_i is even on the first level
-							if PermOnLevel( g_list[i], 1 ) = () then
-								Add( g_list_r0, Section( g_list[i], 1 ) );
-								Add( h_list_r0, Section( h_list[i], 1 ) );
-	
-							# If g_i is odd on the first level
-							else 
-								Add( g_list_r0, Section( g_list[i], 1 )*Section( g_list[i], 2) );
-								Add( h_list_r0, Section( h_list[i], 1 )*Section( h_list[i], 2) );
-							fi;
-						od;
-						
-						# Recursive step: recover portrait of r0
-						r0 := ConjugatorPortraitRecursive( g_list_r0, h_list_r0, lev+1);
-
-	
-						if not (r0 = fail or Size(odd_g_idxs) = 0) then
-							
-							# If we can recover r1 from r0 (r1 = g0^-1*r0*h0)
-							
-							r0_portrait := r0[1];
-							portrait_depth := r0[2];
-	
-							odd_g := g_list[odd_g_idxs[1]];
-							odd_h := h_list[odd_g_idxs[1]];
-
-							# If r0_portrait is a nested list (as opposed to one word),
-							# make it into a TreeAutomorphism
-							if Size(r0_portrait) > 1 then
-								r0_mask := PortraitToMask(r0_portrait, portrait_depth );
-								r0_TA := TreeAutomorphism(r0_mask[1], r0_mask[2]);
-
-								g0_TA := Decompose(Section(odd_g, 1), portrait_depth );
-								h0_TA := Decompose(Section(odd_h, 1), portrait_depth );	
-								r1_TA := g0_TA^-1 * r0_TA * h0_TA;
-								
-								r1_mask := mask_function(r1_TA, 1);
-								r1_portrait := MaskToPortrait(r1_mask, portrait_depth );
-							else 
-								r1_portrait := [Section(odd_g,1)^-1 * r0_portrait[1] * Section(odd_h,1)];
-							fi;
-								
-						elif (r0 = fail and not Size(odd_g_idxs) = 0) or (not r0 = fail and Size(odd_g_idxs) = 0) then
-		
-							# If can't recover r1 from r0, or we need to recover r0 from r1
-							# Build new lists to recover r1 
-
-							g_list_r1 := [];
-							h_list_r1 := [];
-							for i in [1..Size(g_list)] do
-								# If g_i is even on the first level
-								if PermOnLevel( g_list[i], 1 ) = () then
-									Add( g_list_r1, Section( g_list[i], 2 ) );
-									Add( h_list_r1, Section( h_list[i], 2 ) );
-	
-								# If g_i is odd on the first level
-								else 
-									Add( g_list_r1, Section( g_list[i], 2 )*Section( g_list[i], 1) );
-									Add( h_list_r1, Section( h_list[i], 2 )*Section( h_list[i], 1) );
-								fi;
-							od;
-							
-							# Recursive step: recover portrait of r1
-							r1 := ConjugatorPortraitRecursive( g_list_r1, h_list_r1, lev+1);
-							
-							if r1 = fail then
-								return fail;
-							elif not r0 = fail then
-								r0_portrait := r0[1];
-								r1_portrait := r1[1];
-								
-								portrait_depth := Maximum(r0[2], r1[2]);
-							else 
-								# the only case left is where we recover r0 from r1 (r0 = g0*r1*h0^-1)
-								r1_portrait := r1[1];
-								portrait_depth := r1[2];
-		
-								odd_g := g_list[odd_g_idxs[1]];
-								odd_h := h_list[odd_g_idxs[1]];
-
-								# If r1_portrait is a nested list (as opposed to one word),
-								# make it into a TreeAutomorphism
-								if Size(r1_portrait) > 1 then
-									r1_mask := PortraitToMask(r1_portrait, portrait_depth);
-									r1_TA := TreeAutomorphism(r1_mask[1], r1_mask[2]);
-
-									g0_TA := Decompose(Section(odd_g, 1), portrait_depth);
-									h0_TA := Decompose(Section(odd_h, 1), portrait_depth);	
-									r0_TA := g0_TA * r1_TA * h0_TA^-1;
-									
-									r0_mask := mask_function(r0_TA, 1);
-									r0_portrait := MaskToPortrait(r1_mask, portrait_depth);
-								else 
-									r0_portrait := [Section(odd_g,1) * r1_portrait[1] * Section(odd_h,1)^-1];
-								fi;
-							fi;
-								
-						else
-							# if we don't have r0 and we don't have relations
-							return fail; 
-						fi;
-
-						
-
-						if lev = contracting_depth then
-							# on this level, portraits with placeholders become members of the nucleus
-							# WARNING counting may be wrong here, double check
-							return [ [ NucleusElementByPortrait([ (), r0_portrait, r1_portrait ]) ], 0 ];
-						fi;
-							
-	
-					
-						# If both r0/r1 portraits are in the form [word], 
-						# check if the portrait we're about to return is an element of the nucleus
-						# (Since we return [[word], 0] iff word is in the nucleus)
-						#  If it is, return [[word], 0] (this is the self-pruning part)
-						if portrait_depth = 0 then
-							nucleus_element := MaskToNucleusElement([r0_portrait[1], r1_portrait[1]], ());
-							if not nucleus_element = fail then
-								return [[nucleus_element], 0];
-							fi;
-						fi;					
-	
-						return [ [ (), r0_portrait, r1_portrait ], portrait_depth + 1 ];
-	
-					# ------------------------------------ If r is odd ------------------------------------------
-					else 
-						# If we're as deep as we need, return portrait with placeholders 
-						# Possible source of error - pretty sure that perm we add on contracting_depth
-						# counts toward nucleus_distinct_level
-						if lev = contracting_depth + nucleus_distinct_level then
-							return [[(1,2), [placeholder], [placeholder]], 1];
-						fi;	
-						
-						# Build new lists to recover r0
-						g_list_r0 := [];
-						h_list_r0 := [];
-						for i in [1..Size(g_list)] do
-							# If g_i is even on the first level
-							if PermOnLevel( g_list[i], 1 ) = () then
-								Add( g_list_r0, Section( g_list[i], 1 ) );
-								Add( h_list_r0, Section( h_list[i], 2 ) );
-	
-							# If g_i is odd on the first level
-							else 
-								Add( g_list_r0, Section( g_list[i], 1 )*Section( g_list[i], 2) );
-								Add( h_list_r0, Section( h_list[i], 2 )*Section( h_list[i], 1) );
-							fi;
-						od;
-	
-						# Recursive step: recover portrait of r0
-						r0 := ConjugatorPortraitRecursive( g_list_r0, h_list_r0, lev+1);
-
-						if not (r0 = fail or Size(odd_g_idxs) = 0) then
-							
-							# If we can recover r1 from r0 (r1 = g1*r0*h0^-1)
-							
-							r0_portrait := r0[1];
-							portrait_depth := r0[2];
-	
-							odd_g := g_list[odd_g_idxs[1]];
-							odd_h := h_list[odd_g_idxs[1]];
-
-							# If r0_portrait is a nested list (as opposed to one word),
-							# make it into a TreeAutomorphism
-							if Size(r0_portrait) > 1 then
-								r0_mask := PortraitToMask(r0_portrait, portrait_depth );
-								r0_TA := TreeAutomorphism(r0_mask[1], r0_mask[2]);
-
-								g1_TA := Decompose(Section(odd_g, 2), portrait_depth );
-								h0_TA := Decompose(Section(odd_h, 1), portrait_depth );	
-								r1_TA := g1_TA * r0_TA * h0_TA^-1;
-								
-								r1_mask := mask_function(r1_TA, 1);
-								r1_portrait := MaskToPortrait(r1_mask, portrait_depth );
-							else 
-								r1_portrait := [Section(odd_g,2) * r0_portrait[1] * Section(odd_h,1)^-1];
-							fi;
-								
-						elif (r0 = fail and not Size(odd_g_idxs) = 0) or (not r0 = fail and Size(odd_g_idxs) = 0) then
-		
-							# If can't recover r1 from r0, or we need to recover r0 from r1 
-							# Build new lists to recover r1 
-	
-							g_list_r1 := [];
-							h_list_r1 := [];
-							for i in [1..Size(g_list)] do
-								# If g_i is even on the first level
-								if PermOnLevel( g_list[i], 1 ) = () then
-									Add( g_list_r1, Section( g_list[i], 2 ) );
-									Add( h_list_r1, Section( h_list[i], 1 ) );
-	
-								# If g_i is odd on the first level
-								else 
-									Add( g_list_r1, Section( g_list[i], 2 )*Section( g_list[i], 1) );
-									Add( h_list_r1, Section( h_list[i], 1 )*Section( h_list[i], 2) );
-								fi;
-							od;
-							
-							# Recursive step: recover portrait of r1
-							r1 := ConjugatorPortraitRecursive( g_list_r1, h_list_r1, lev+1);
-
-							if r1 = fail then
-									return fail;
-								elif not r0 = fail then
-									r0_portrait := r0[1];
-									r1_portrait := r1[1];
-									
-									portrait_depth := Maximum(r0[2], r1[2]);
-								else 
-									# the only case left is where we recover r0 from r1 (r0 = g1^-1*r1*h0)
-									r1_portrait := r1[1];
-									portrait_depth := r1[2];
-			
-									odd_g := g_list[odd_g_idxs[1]];
-									odd_h := h_list[odd_g_idxs[1]];
-
-									# If r0_portrait is a nested list (as opposed to one word),
-									# make it into a TreeAutomorphism
-									if Size(r1_portrait) > 1 then
-										r1_mask := PortraitToMask(r1_portrait, portrait_depth);
-										r1_TA := TreeAutomorphism(r1_mask[1], r1_mask[2]);
-
-										g1_TA := Decompose(Section(odd_g, 2), portrait_depth);
-										h0_TA := Decompose(Section(odd_h, 1), portrait_depth);	
-										r0_TA := g1_TA^-1 * r1_TA * h0_TA;
-										
-										r0_mask := mask_function(r0_TA, 1);
-										r0_portrait := MaskToPortrait(r1_mask, portrait_depth);
-									else 
-										
-										r0_portrait := [Section(odd_g,2)^-1 * r1_portrait[1] * Section(odd_h,1)];
-								fi;
-							fi;
-									
-						else
-							# if we don't have r0 and we don't have relations
-							return fail; 
-						fi;
-
-						if lev = contracting_depth then
-							# on this level, portraits with placeholders become members of the nucleus
-							# WARNING counting may be wrong here, double check
-							return [ [ NucleusElementByPortrait([ (1,2), r0_portrait, r1_portrait ]) ], 0 ];
-						fi;
-							
-	
-					
-						# If both r0/r1 portraits are in the form [word], 
-						# check if the portrait we're about to return is an element of the nucleus
-						# (Since we return [[word], 0] iff word is in the nucleus)
-						#  If it is, return [[word], 0] (this is the self-pruning part)
-						if portrait_depth = 0 then
-							nucleus_element := MaskToNucleusElement([r0_portrait[1], r1_portrait[1]], (1,2));
-							if not nucleus_element = fail then
-								return [[nucleus_element], 0];
-							fi;
-						fi;					
-								
-						return [ [ (1,2), r0_portrait, r1_portrait ], portrait_depth + 1 ];
-					fi;
+				if ConjEven = true then
+					perm := ();
+				elif ConjEven = false then
+					perm := (1,2);
 				else
-					# If ConjEven failed 
-					if i = Size(g_list) then 
-						# If we make it through the whole list (i.e., fail on every g to recover r), return fail
+					# If ConjEven failed and we've made it thought the whole list (i.e. failed to recover r each time)
+					# return fail, otherwise go to next g_i
+					if i = Size(g_list) then
+						return fail;
+					else
+						continue;
+					fi;	
+				fi;
+
+				if lev = contracting_depth + nucleus_distinct_level then
+					return [ [perm, [placeholder], [placeholder]], 1 ];
+				fi;
+			
+				# Build new lists to recover r0
+				g_list_r0 := [];
+				h_list_r0 := [];
+
+				for i in [1..Size(g_list)] do
+					# If g_i is odd on the first level
+					if i in odd_g_idxs then
+						# If r is even
+						if perm = () then
+							Add( g_list_r0, Section( g_list[i], 1 )*Section( g_list[i], 2) );
+							Add( h_list_r0, Section( h_list[i], 1 )*Section( h_list[i], 2) );
+						# If r is odd
+						else
+							Add( g_list_r0, Section( g_list[i], 1 )*Section( g_list[i], 2) );
+							Add( h_list_r0, Section( h_list[i], 2 )*Section( h_list[i], 1) );
+						fi;
+
+					# If g_i is even on the first level
+					else
+						# If r is even 
+						if perm = () then
+							Add( g_list_r0, Section( g_list[i], 1 ) );
+							Add( h_list_r0, Section( h_list[i], 1 ) );
+						# If r is odd	
+						else
+							Add( g_list_r0, Section( g_list[i], 1 ) );
+							Add( h_list_r0, Section( h_list[i], 2 ) );
+						fi;
+					fi;
+				od;
+
+				
+				# Recursive step: recover portrait of r0
+				r0 := ConjugatorPortraitRecursive( g_list_r0, h_list_r0, lev+1);
+
+				# Now to recover r1
+				if not ((r0 = fail) or (Size(odd_g_idxs) = 0)) then
+					
+					# If we can recover r1 from r0
+					
+					r0_portrait := r0[1];
+					portrait_depth := r0[2];
+
+					odd_g := g_list[odd_g_idxs[1]];
+					odd_h := h_list[odd_g_idxs[1]];
+
+					# If r0_portrait is a nested list (as opposed to one word),
+					# make it into a TreeAutomorphism
+					if Size(r0_portrait) > 1 then
+						r0_mask := PortraitToMask(r0_portrait, portrait_depth );
+						r0_TA := TreeAutomorphism(r0_mask[1], r0_mask[2]);
+						
+						if perm = () then
+							# r even: r1 = g0^-1*r0*h0
+							g0_TA := Decompose(Section(odd_g, 1), portrait_depth );
+							h0_TA := Decompose(Section(odd_h, 1), portrait_depth );	
+							r1_TA := g0_TA^-1 * r0_TA * h0_TA;
+						else 
+							# r odd: r1 = g1*r0*h0^-1
+							g1_TA := Decompose(Section(odd_g, 2), portrait_depth );
+							h0_TA := Decompose(Section(odd_h, 1), portrait_depth );	
+							r1_TA := g1_TA * r0_TA * h0_TA^-1;
+						fi;
+
+						r1_mask := mask_function(r1_TA, 1);
+						r1_portrait := MaskToPortrait(r1_mask, portrait_depth );
+					else
+						if perm = () then
+							r1_portrait := [Section(odd_g,1)^-1 * r0_portrait[1] * Section(odd_h,1)];
+						else
+							r1_portrait := [Section(odd_g,2) * r0_portrait[1] * Section(odd_h,1)^-1];
+						fi;
+					fi;
+
+				elif (r0 = fail) and (Size(odd_g_idxs) = 0) then
+					return fail;
+				else 
+					# we either have r0 or relations (not both)
+					# Build new lists to recover r1
+					
+					g_list_r1 := [];
+					h_list_r1 := [];
+
+					for i in [1..Size(g_list)] do
+						# If g_i is odd 
+						if i in odd_g_idxs then
+							# If r is even
+							if perm = () then
+								Add( g_list_r1, Section( g_list[i], 2 )*Section( g_list[i], 1) );
+								Add( h_list_r1, Section( h_list[i], 2 )*Section( h_list[i], 1) );
+							# If r is odd
+							else 
+								Add( g_list_r1, Section( g_list[i], 2 )*Section( g_list[i], 1) );
+								Add( h_list_r1, Section( h_list[i], 1 )*Section( h_list[i], 2) );
+							fi;
+
+						# If g_i is even
+						else
+							# If r is even
+							if perm = () then
+								Add( g_list_r1, Section( g_list[i], 2 ) );
+								Add( h_list_r1, Section( h_list[i], 2 ) );
+							# If r is odd
+							else
+								Add( g_list_r1, Section( g_list[i], 2 ) );
+								Add( h_list_r1, Section( h_list[i], 1 ) );
+							fi;	
+						fi;	
+					od;
+
+					# Recursive step: recover portrait of r1
+					r1 := ConjugatorPortraitRecursive( g_list_r1, h_list_r1, lev+1);
+
+					# At this point, if we don't have r1, we don't have r
+					if r1 = fail then
 						return fail;
 					fi;
+			
+					# Now we decide how we need to use r1, depending on whether we have r0
+
+					if not (r0 = fail) then
+
+						# If we have both r0 and r1
+						
+						r0_portrait := r0[1];
+						r1_portrait := r1[1];
+						
+						portrait_depth := Maximum(r0[2], r1[2]);
+					else
+							
+						# If we can recover r0 from r1
+						
+						r1_portrait := r1[1];
+						portrait_depth := r1[2];
+
+						odd_g := g_list[odd_g_idxs[1]];
+						odd_h := h_list[odd_g_idxs[1]];
+
+						# If r1_portrait is a nested list (as opposed to one word),
+						# make it into a TreeAutomorphism
+						if Size(r1_portrait) > 1 then
+							r1_mask := PortraitToMask(r1_portrait, portrait_depth );
+							r1_TA := TreeAutomorphism(r1_mask[1], r1_mask[2]);
+							
+							if perm = () then
+								# r even: r0 = g0*r1*h0^-1
+								g0_TA := Decompose(Section(odd_g, 1), portrait_depth );
+								h0_TA := Decompose(Section(odd_h, 1), portrait_depth );	
+								r0_TA := g0_TA * r1_TA * h0_TA^-1;
+							else 
+								# r odd: r0 = g1^-1*r1*h0
+								g1_TA := Decompose(Section(odd_g, 2), portrait_depth );
+								h0_TA := Decompose(Section(odd_h, 1), portrait_depth );	
+								r0_TA := g1_TA^-1 * r1_TA * h0_TA;
+							fi;
+
+							r0_mask := mask_function(r0_TA, 1);
+							r0_portrait := MaskToPortrait(r0_mask, portrait_depth );
+						else 
+							if perm = () then
+								r0_portrait := [Section(odd_g,1) * r1_portrait[1] * Section(odd_h,1)^-1];
+							else
+								r0_portrait := [Section(odd_g,2)^-1 * r1_portrait[1] * Section(odd_h,1)];
+							fi;
+						fi;
+
+					fi; # End of deciding how to use r1
+					
+				fi; # Should have r0_portrait and r1_portrait at this point
+
+				if lev = contracting_depth then
+					# on this level, portraits with placeholders become members of the nucleus
+					return [ [ NucleusElementByPortrait([ perm, r0_portrait, r1_portrait ]) ], 0 ];
 				fi;
-			else 
+					
+
+			
+				# If both r0/r1 portraits are in the form [word], 
+				# check if the portrait we're about to return is an element of the nucleus
+				# (Since we return [[word], 0] iff word is in the nucleus)
+				#  If it is, return [[word], 0] (this is the self-pruning part)
+				if portrait_depth = 0 then
+					nucleus_element := MaskToNucleusElement([ [r0_portrait[1], r1_portrait[1]], perm ]);
+					if not nucleus_element = fail then
+						return [[nucleus_element], 0];
+					fi;
+				fi;
+		
+				Print("r0_portrait: ", r0_portrait, "\n");
+				Print("r1_portrait: ", r1_portrait, "\n");
+								
+
+				return [ [ perm, r0_portrait, r1_portrait ], portrait_depth + 1 ];
+
+
+			else
 				# If g_i is odd
 				if i = Size(g_list) then
-					# If we make it through the whole list (i.e., fail on every g to recover r), return fail
+					# If we make it through the whole list (i.e., fail on every g to recover r)
 					return fail;
 				fi;
 			fi;
 		od;	
-						
 	end;	
 
 	odd_g_idxs := IdxsOfOdds( g_list );
