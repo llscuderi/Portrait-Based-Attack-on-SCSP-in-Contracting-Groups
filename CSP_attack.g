@@ -142,7 +142,7 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 	G:= GroupOfAutomFamily( FamilyObj( g_list[1] ) );
 	Nucleus := FindNucleus(G)[1];
 
-	placeholder := g_list[1];
+	placeholder := Nucleus[1];
 
 	# We precompute this list because it takes a while 
 	PermGroups := ComputePermGroups( G, 10 );
@@ -245,12 +245,13 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 	
 		local i, ConjEven, perm, g_list_r0, h_list_r0, g_list_r1, h_list_r1, r0, r1,
 			r0_portrait, r1_portrait, r0_mask, r1_mask, odd_g, odd_h, r0_TA, r1_TA, 
-			g0_TA, g1_TA, h0_TA, portrait_depth, nucleus_element;
+			g0_TA, g1_TA, h0_TA, portrait_depth, nucleus_element, odd_g_idxs;
 
 		Print("Level: ", lev, "\n");
 		Print("g_list: ", g_list, "\n");
 		
 		odd_g_idxs := IdxsOfOdds( g_list );
+		Print("Indices of odd g: ", odd_g_idxs, "\n");
 
 		for i in [1..Size(g_list)] do
 			if not i in odd_g_idxs then
@@ -313,12 +314,16 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 				if not ((r0 = fail) or (Size(odd_g_idxs) = 0)) then
 					
 					# If we can recover r1 from r0
+					Print("Recovering r1 from r0...\n");
 					
 					r0_portrait := r0[1];
 					portrait_depth := r0[2];
 
 					odd_g := g_list[odd_g_idxs[1]];
 					odd_h := h_list[odd_g_idxs[1]];
+					Print("Odd g: ", odd_g, ", Odd h: ", odd_h, "\n");
+					Print("g_list: ", g_list, "\n");
+					Print("odd_g_ixs: ", odd_g_idxs, "\n");
 
 					# If r0_portrait is a nested list (as opposed to one word),
 					# make it into a TreeAutomorphism
@@ -405,12 +410,16 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 					else
 							
 						# If we can recover r0 from r1
+						Print("Recovering r0 from r1...\n");
 						
 						r1_portrait := r1[1];
 						portrait_depth := r1[2];
 
 						odd_g := g_list[odd_g_idxs[1]];
 						odd_h := h_list[odd_g_idxs[1]];
+						Print("Odd g: ", odd_g, ", Odd h: ", odd_h, "\n");
+						Print("g_list: ", g_list, "\n");
+						Print("odd_g_ixs: ", odd_g_idxs, "\n");
 
 						# If r1_portrait is a nested list (as opposed to one word),
 						# make it into a TreeAutomorphism
