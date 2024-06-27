@@ -90,8 +90,6 @@ MinimizeMaxDepth := function(G)
 	return min_k;
 end;
 
-# TODO: Some functions that decide what depth we need, possibly by using previous calculations	
-
 # ------------------------------------------------------
 # ------- Functions for recovering conjugator ----------
 # ------------------------------------------------------
@@ -130,19 +128,20 @@ ExtendLists:=function(g_list, h_list, odd_idxs)
 		od;
 	od;
 	return [g_list, h_list];
-end;	
+end;
+
 
 # ------------------------------------------------------------------------------------
 												
 ConjugatorPortrait:=function( g_list, h_list, key_length )
-	local G, Nucleus, placeholder, portrait, contracting_depth, PermGroups, AreNotConjugate, ConjugatorEvenFirstLevel, 
-		NucleusDistinctLevel, nucleus_distinct_level, N_perms, N_masks, NucleusElementByPortrait, MaskToNucleusElement,
-			ConjugatorPortraitRecursive, i, odd_g_idxs, gh_extended ;
+	local G, nucleus, placeholder, portrait, contracting_depth, PermGroups, AreNotConjugate, ConjugatorEvenFirstLevel, 
+		NucleusDistinctLevel, nucleus_distinct_level, N_perms, N_masks, N_portraits, NucleusElementByPermutation, NucleusElementByPortrait,
+		ExtendPortrait, PrunePortrait, ContractingPortrait, ConjugatorPortraitRecursive, i, odd_g_idxs, gh_extended ;
 	
 	G:= GroupOfAutomFamily( FamilyObj( g_list[1] ) );
-	Nucleus := FindNucleus(G)[1];
+	nucleus := FindNucleus(G)[1];
 
-	placeholder := Nucleus[1];
+	placeholder := nucleus[1];
 
 	# We precompute this list because it takes a while 
 	PermGroups := ComputePermGroups( G, 10 );
@@ -190,7 +189,7 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 
 		lev := 1;
 		while true do
-			L := List(Nucleus, x -> PermOnLevel(x, lev));
+			L := List(nucleus, x -> PermOnLevel(x, lev));
 			if NoRepeats(L) then
 				return lev;
 			else
@@ -200,14 +199,12 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 	end;
 
 	nucleus_distinct_level := NucleusDistinctLevel(G);
-	N_perms := List(Nucleus, x -> PermOnLevel(x, nucleus_distinct_level));
+	N_perms := List(nucleus, x -> PermOnLevel(x, nucleus_distinct_level));
 
 	Print("N_perms:" , N_perms, "\n");
 
-	N_masks := List(Nucleus, x -> mask_function(x,1)); 
-
-	# If a nested portrait is certainly in the nucleus, identify it by permutation
-	NucleusElementByPortrait := function( port )
+	# If a nested portrait is certainly in the nucleus, identify it by permutation on nucleus_distinct_level
+	NucleusElementByPermutation := function( port )
 		local portrait_permutation;
 
 		portrait_permutation := PermutationOfNestedPortrait(port, nucleus_distinct_level);
@@ -216,35 +213,86 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 		Print("Permutation:", portrait_permutation, "\n"); 
 
 			
-		for i in [1..Size(Nucleus)] do
+		for i in [1..Size(nucleus)] do
 			if portrait_permutation = N_perms[i] then
-				return Nucleus[i];
+				return nucleus[i];
 			fi;
 		od;
 	
 		Error("Did not reach element of the nucleus at contracting_depth");	
 	end;
 
-	# function to take mask of depth 1 ([[word, word], perm]) 
+	N_masks := List(nucleus, x -> mask_function(x,1));
+	N_portraits := List(N_masks, x -> MaskToPortrait(x, 1)); 
+
+	# function to take portrait of depth 1 ([perm, [word], [word]]) 
 	# and if it is in the nucleus, return element of nucleus
-	MaskToNucleusElement := function( mask )
+	NucleusElementByPortrait := function( port )
 		
-		for i in [1..Size(Nucleus)] do
-			if mask = N_masks[i] then 
-				return Nucleus[i];
+		for i in [1..Size(nucleus)] do
+			if port = N_portraits[i] then 
+				return nucleus[i];
 			fi;
 		od;
 
 		return fail;
 	end;
-	
+
+ExtendPortrait := function(port)
+	local depth, extended_portrait1, extended_portrait2;
+
+	if Size(port) = 1 then 
+		return [AutomPortrait(port[1]), AutomPortraitDepth(port[1])];              
+	else 
+		extended_portrait1 := ExtendPortrait(port[2]);
+		extended_portrait2 := ExtendPortrait(port[3]); 
+
+		depth := Maximum(extended_portrait1[2], extended_portrait2[2]) + 1;
+		
+		return [ [port[1], extended_portrait1[1], extended_portrait2[1]], depth ]; 
+	fi; 
+end;	
+
+PrunePortrait := function (port) 
+	local pruned_portrait, depth, pruned_1, pruned_2;                                
+
+	if Size(port) = 1 then 
+		return [port, 0]; 
+	fi;  
+
+	pruned_portrait := port;
+
+	if Size(port[2]) > 1 or Size(port[3]) > 1 then
+		pruned_1 := PrunePortrait(port[2]);
+		pruned_2 := PrunePortrait(port[3]);
+
+		depth := Maximum(pruned_1[2], pruned_2[2]) + 1;
+
+		pruned_portrait := [port[1], pruned_1[1], pruned_2[1]];
+	else
+		depth := 1; 
+	fi;      
+
+	if pruned_portrait in N_portraits then 
+		return [ [NucleusElementByPortrait(pruned_portrait)], 0 ]; 
+	fi;
+
+	return [pruned_portrait, depth]; 
+end;
+
+ContractingPortrait := function(port) 
+	local cportrait;
+	cportrait := ExtendPortrait(port);
+	cportrait := PrunePortrait(cportrait[1]);
+	return cportrait;
+end;
+
 	# Recursively builds portrait of conjugator from lists of conjugate pairs
 	# Returns list [portrait, depth] since we need depth for PortraitToMask
-	# TODO (eventually): Refactor for less repeat code 
 	ConjugatorPortraitRecursive :=function( g_list, h_list, lev)
 	
 		local i, ConjEven, perm, g_list_r0, h_list_r0, g_list_r1, h_list_r1, r0, r1,
-			r0_portrait, r1_portrait, r0_mask, r1_mask, odd_g, odd_h, r0_TA, r1_TA, 
+			r0_portrait, r1_portrait, contracting_portrait, r0_mask, r1_mask, odd_g, odd_h, r0_TA, r1_TA, 
 			g0_TA, g1_TA, h0_TA, portrait_depth, nucleus_element, odd_g_idxs;
 
 		Print("Level: ", lev, "\n");
@@ -345,11 +393,16 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 
 						r1_mask := mask_function(r1_TA, 1);
 						r1_portrait := MaskToPortrait(r1_mask, portrait_depth );
+						contracting_portrait := ContractingPortrait(r1_portrait);
+						r1_portrait := contracting_portrait[1];
+						portrait_depth := Maximum( portrait_depth, contracting_portrait[2] );
 					else
 						if perm = () then
-							r1_portrait := [Section(odd_g,1)^-1 * r0_portrait[1] * Section(odd_h,1)];
+							r1_portrait := AutomPortrait(Section(odd_g,1)^-1 * r0_portrait[1] * Section(odd_h,1));
+							portrait_depth := Maximum(portrait_depth, AutomPortraitDepth(Section(odd_g,1)^-1 * r0_portrait[1] * Section(odd_h,1)));
 						else
-							r1_portrait := [Section(odd_g,2) * r0_portrait[1] * Section(odd_h,1)^-1];
+							r1_portrait := AutomPortrait(Section(odd_g,2) * r0_portrait[1] * Section(odd_h,1)^-1);
+							portrait_depth := Maximum(portrait_depth, AutomPortraitDepth(Section(odd_g,2) * r0_portrait[1] * Section(odd_h,1)^-1));
 						fi;
 					fi;
 
@@ -441,11 +494,16 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 
 							r0_mask := mask_function(r0_TA, 1);
 							r0_portrait := MaskToPortrait(r0_mask, portrait_depth );
+							contracting_portrait := ContractingPortrait(r0_portrait);
+							r0_portrait := contracting_portrait[1];
+							portrait_depth := Maximum( portrait_depth, contracting_portrait[2] );
 						else 
 							if perm = () then
-								r0_portrait := [Section(odd_g,1) * r1_portrait[1] * Section(odd_h,1)^-1];
+								r0_portrait := AutomPortrait(Section(odd_g,1) * r1_portrait[1] * Section(odd_h,1)^-1);
+								portrait_depth := Maximum(portrait_depth, AutomPortraitDepth(Section(odd_g,1) * r1_portrait[1] * Section(odd_h,1)^-1));
 							else
-								r0_portrait := [Section(odd_g,2)^-1 * r1_portrait[1] * Section(odd_h,1)];
+								r0_portrait := AutomPortrait(Section(odd_g,2)^-1 * r1_portrait[1] * Section(odd_h,1));
+								portrait_depth := Maximum(portrait_depth, AutomPortraitDepth(Section(odd_g,2)^-1 * r1_portrait[1] * Section(odd_h,1)));
 							fi;
 						fi;
 
@@ -453,19 +511,16 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 					
 				fi; # Should have r0_portrait and r1_portrait at this point
 
+				
 				if lev = contracting_depth then
 					# on this level, portraits with placeholders become members of the nucleus
-					return [ [ NucleusElementByPortrait([ perm, r0_portrait, r1_portrait ]) ], 0 ];
+					return [ [ NucleusElementByPermutation([ perm, r0_portrait, r1_portrait ]) ], 0 ];
 				fi;
-					
 
-			
 				# If both r0/r1 portraits are in the form [word], 
 				# check if the portrait we're about to return is an element of the nucleus
-				# (Since we return [[word], 0] iff word is in the nucleus)
-				#  If it is, return [[word], 0] (this is the self-pruning part)
 				if portrait_depth = 0 then
-					nucleus_element := MaskToNucleusElement([ [r0_portrait[1], r1_portrait[1]], perm ]);
+					nucleus_element := NucleusElementByPortrait([perm, r0_portrait, r1_portrait]);
 					if not nucleus_element = fail then
 						return [[nucleus_element], 0];
 					fi;
@@ -473,9 +528,8 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 		
 				Print("r0_portrait: ", r0_portrait, "\n");
 				Print("r1_portrait: ", r1_portrait, "\n");
-								
-
-				return [ [ perm, r0_portrait, r1_portrait ], portrait_depth + 1 ];
+			
+				return [ [ perm, r0_portrait, r1_portrait ], portrait_depth + 1 ]; 
 
 
 			else
