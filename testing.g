@@ -1,12 +1,15 @@
+# Read("C:/Users/savchuk/Documents/GitHub/Group_Based_Crypto/portrait_mask_conversion.g");
 # Read("C:/Users/savchuk/Documents/GitHub/Group_Based_Crypto/CSP_attack.g");
 # Read("C:/Users/savchuk/Documents/GitHub/Group_Based_Crypto/random_element.g");
 # Read("C:/Users/savchuk/Documents/GitHub/Group_Based_Crypto/testing.g");
 
+# Read("~/Documents/GitHub/Group_Based_Crypto/portrait_mask_conversion.g");
 # Read("~/Documents/GitHub/Group_Based_Crypto/CSP_attack.g");
 # Read("~/Documents/GitHub/Group_Based_Crypto/random_element.g");
 # Read("~/Documents/GitHub/Group_Based_Crypto/testing.g");
 
 
+# Read("/Users/llscuderi/Documents/GitHub/Group_Based_Crypto/portrait_mask_conversion.g");
 # Read("/Users/llscuderi/Documents/GitHub/Group_Based_Crypto/CSP_attack.g");
 # Read("/Users/llscuderi/Documents/GitHub/Group_Based_Crypto/random_element.g");
 # Read("/Users/llscuderi/Documents/GitHub/Group_Based_Crypto/testing.g");
@@ -48,6 +51,7 @@ N_portraits := List(N_masks, x -> MaskToPortrait(x, 1));
 # function to take portrait of depth 1 ([perm, [word], [word]]) 
 # and if it is in the nucleus, return element of nucleus
 NucleusElementByPortrait := function( port )
+	local i;
 	
 	for i in [1..Size(nucleus)] do
 		if port = N_portraits[i] then 
@@ -115,21 +119,26 @@ TestConjugatorPortrait := function(G, list_size, g_length, conj_length, attempts
 
   for i in [1..attempts] do
 
-    # TODO: Do we want g's of specified length? 
     g_list := List([1..list_size], x -> Random_Element(g_length, G));
     r := Random_Element(conj_length, G);
     h_list := List(g_list, x -> r^-1*x*r);
+	
+    Print("g_list: ", g_list, "\n");
+    Print("h_list: ", h_list, "\n");
+    Print("r: ", r, "\n");
   
     # ConjugatorPortrait returns list [portrait, depth]
     result := ConjugatorPortrait(g_list, h_list, conj_length);
-    r_portrait := result[1];
-    depth := result[2];
+    
+    if not result = fail then
+	    r_portrait := result[1];
 
-    if r_portrait = AutomPortrait(r) then
-        successes := successes + 1;
-    elif not r_portrait = fail then 
-        # If a list is returned but it isn't the right portrait, something is wrong
-	Error("output is not AutomPortrait");
+	    if r_portrait = AutomPortrait(r) then
+		successes := successes + 1;
+	    else
+		# If a list is returned but it isn't the right portrait, something is wrong
+		Error("output is not AutomPortrait");
+	    fi;
     fi;
 
     od;

@@ -295,11 +295,7 @@ end;
 			r0_portrait, r1_portrait, contracting_portrait, r0_mask, r1_mask, odd_g, odd_h, r0_TA, r1_TA, 
 			g0_TA, g1_TA, h0_TA, portrait_depth, nucleus_element, odd_g_idxs;
 
-		Print("Level: ", lev, "\n");
-		Print("g_list: ", g_list, "\n");
-		
 		odd_g_idxs := IdxsOfOdds( g_list );
-		Print("Indices of odd g: ", odd_g_idxs, "\n");
 
 		for i in [1..Size(g_list)] do
 			if not i in odd_g_idxs then
@@ -362,16 +358,12 @@ end;
 				if not ((r0 = fail) or (Size(odd_g_idxs) = 0)) then
 					
 					# If we can recover r1 from r0
-					Print("Recovering r1 from r0...\n");
 					
 					r0_portrait := r0[1];
 					portrait_depth := r0[2];
 
 					odd_g := g_list[odd_g_idxs[1]];
 					odd_h := h_list[odd_g_idxs[1]];
-					Print("Odd g: ", odd_g, ", Odd h: ", odd_h, "\n");
-					Print("g_list: ", g_list, "\n");
-					Print("odd_g_ixs: ", odd_g_idxs, "\n");
 
 					# If r0_portrait is a nested list (as opposed to one word),
 					# make it into a TreeAutomorphism
@@ -393,9 +385,11 @@ end;
 
 						r1_mask := mask_function(r1_TA, 1);
 						r1_portrait := MaskToPortrait(r1_mask, portrait_depth );
-						contracting_portrait := ContractingPortrait(r1_portrait);
-						r1_portrait := contracting_portrait[1];
-						portrait_depth := Maximum( portrait_depth, contracting_portrait[2] );
+						if lev < contracting_depth + 1 then
+							contracting_portrait := ContractingPortrait(r1_portrait);
+							r1_portrait := contracting_portrait[1];
+							portrait_depth := Maximum( portrait_depth, contracting_portrait[2] );
+						fi;
 					else
 						if perm = () then
 							r1_portrait := AutomPortrait(Section(odd_g,1)^-1 * r0_portrait[1] * Section(odd_h,1));
@@ -463,16 +457,12 @@ end;
 					else
 							
 						# If we can recover r0 from r1
-						Print("Recovering r0 from r1...\n");
 						
 						r1_portrait := r1[1];
 						portrait_depth := r1[2];
 
 						odd_g := g_list[odd_g_idxs[1]];
 						odd_h := h_list[odd_g_idxs[1]];
-						Print("Odd g: ", odd_g, ", Odd h: ", odd_h, "\n");
-						Print("g_list: ", g_list, "\n");
-						Print("odd_g_ixs: ", odd_g_idxs, "\n");
 
 						# If r1_portrait is a nested list (as opposed to one word),
 						# make it into a TreeAutomorphism
@@ -494,9 +484,11 @@ end;
 
 							r0_mask := mask_function(r0_TA, 1);
 							r0_portrait := MaskToPortrait(r0_mask, portrait_depth );
-							contracting_portrait := ContractingPortrait(r0_portrait);
-							r0_portrait := contracting_portrait[1];
-							portrait_depth := Maximum( portrait_depth, contracting_portrait[2] );
+							if lev < contracting_depth + 1 then
+								contracting_portrait := ContractingPortrait(r0_portrait);
+								r0_portrait := contracting_portrait[1];
+								portrait_depth := Maximum( portrait_depth, contracting_portrait[2] );
+							fi;
 						else 
 							if perm = () then
 								r0_portrait := AutomPortrait(Section(odd_g,1) * r1_portrait[1] * Section(odd_h,1)^-1);
@@ -512,7 +504,7 @@ end;
 				fi; # Should have r0_portrait and r1_portrait at this point
 
 				
-				if lev = contracting_depth then
+				if lev = contracting_depth + 1 then
 					# on this level, portraits with placeholders become members of the nucleus
 					return [ [ NucleusElementByPermutation([ perm, r0_portrait, r1_portrait ]) ], 0 ];
 				fi;
@@ -526,9 +518,6 @@ end;
 					fi;
 				fi;
 		
-				Print("r0_portrait: ", r0_portrait, "\n");
-				Print("r1_portrait: ", r1_portrait, "\n");
-			
 				return [ [ perm, r0_portrait, r1_portrait ], portrait_depth + 1 ]; 
 
 
