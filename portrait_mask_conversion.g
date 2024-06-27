@@ -1,5 +1,7 @@
 ##  Read("C:/Users/Arsalan Malik/Desktop/Gap-files/portrait_mask_conversion.g");
 ##  Read("/Users/Arsalan/Documents/gap-4.12.1/Gap codes/portrait_mask_conversion.g");
+##  Read("C:/Users/savchuk/Documents/GitHub/Group_Based_Crypto/portrait_mask_conversion.g");
+
 
 
 mask_function := function(group_element , fixed_depth) 
@@ -112,20 +114,48 @@ PortraitToMaskBoundary := function(portrait , lev)
     return boundary_list ;
 end;
 
+
+PortraitToMaskBoundaryNonuniorm := function(portrait , lev)
+    local i , sections, d;
+    
+	if lev=0 then
+        if Length(portrait)=1 then
+            return portrait;
+        else
+            Error("PortraitToMaskBoundaryNonuniform: <lev> cannot be smaller than the depth of the portrait");
+        fi;
+    fi;
+
+    if Length(portrait)=1 then 
+        return Sections(portrait[1], lev); 
+    fi;
+
+    d := Length(portrait) - 1;
+
+    sections:=[];
+
+    for i in [1..d] do
+		Append(sections, PortraitToMaskBoundaryNonuniorm(portrait[i+1],lev-1));
+	od;
+
+    return sections;
+end;
+
+
 PermutationOfNestedPortrait := function(portrait, lev)
 
     local i, d, perms, l;
 
     if lev=1 then
-        if not IsList(portrait) then
-            return PermOnLevel(portrait, lev);
+        if Length(portrait)=1 then
+            return PermOnLevel(portrait[1], lev);
         else
             return portrait[1];
         fi;
     fi;
 
-    if not IsList(portrait) then 
-        return PermOnLevel(portrait, lev); 
+    if Length(portrait)=1 then 
+        return PermOnLevel(portrait[1], lev); 
     fi;
 
     d := Length(portrait) - 1;
