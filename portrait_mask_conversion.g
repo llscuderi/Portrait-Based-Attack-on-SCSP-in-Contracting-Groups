@@ -115,7 +115,7 @@ PortraitToMaskBoundary := function(portrait , lev)
 end;
 
 
-PortraitToMaskBoundaryNonuniorm := function(portrait , lev)
+PortraitToMaskBoundaryNonuniform := function(portrait , lev)
     local i , sections, d;
     
 	if lev=0 then
@@ -135,7 +135,7 @@ PortraitToMaskBoundaryNonuniorm := function(portrait , lev)
     sections:=[];
 
     for i in [1..d] do
-		Append(sections, PortraitToMaskBoundaryNonuniorm(portrait[i+1],lev-1));
+		Append(sections, PortraitToMaskBoundaryNonuniform(portrait[i+1],lev-1));
 	od;
 
     return sections;
@@ -181,7 +181,7 @@ PortraitToMask := function(portrait , lev)
 
     mask_element := [] ;
 
-    mask_element[1] := PortraitToMaskBoundary(portrait,lev);
+    mask_element[1] := PortraitToMaskBoundaryNonuniform(portrait,lev);
     mask_element[2] := PermutationOfNestedPortrait(portrait,lev);
 
     return mask_element;
