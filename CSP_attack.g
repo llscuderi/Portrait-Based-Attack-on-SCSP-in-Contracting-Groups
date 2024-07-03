@@ -148,7 +148,7 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 	placeholder := nucleus[1];
 
 	# We precompute this list because it takes a while 
-	PermGroups := ComputePermGroups( G, 10 );
+	PermGroups := ComputePermGroups( G, 4 );
 	
 	contracting_depth := PortraitDepthUpperBound(G, key_length, 2);
 	Print("contracting depth: ", contracting_depth, "\n");
@@ -161,10 +161,10 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 			if not IsConjugate(Glev, PermOnLevel(a,l), PermOnLevel(b,l)) then
 				# Return true if NOT conjugate 
 				return true; 
-			else
-				return false;
 			fi;
 		od;
+		
+		return false;
 	end;
 
 	# We always pass g that's even on the first level
@@ -296,6 +296,10 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 			g0_TA, g1_TA, h0_TA, portrait_depth, nucleus_element, odd_g_idxs;
 
 		odd_g_idxs := IdxsOfOdds( g_list );
+		if odd_g_idxs = [] then
+			branch_count := branch_count + 1;
+			Print("branch, level = ", lev, "\n");
+		fi;
 
 		for i in [1..Size(g_list)] do
 			if not i in odd_g_idxs then
@@ -308,6 +312,7 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 				else
 					# If ConjEven failed and we've made it thought the whole list (i.e. failed to recover r each time)
 					# return fail, otherwise go to next g_i
+
 					if i = Size(g_list) then
 						return fail;
 					else
@@ -350,6 +355,7 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 					fi;
 				od;
 
+				Print("g list for r0: ", g_list_r0, "\n");
 				
 				# Recursive step: recover portrait of r0
 				r0 := ConjugatorPortraitRecursive( g_list_r0, h_list_r0, lev+1);
@@ -449,8 +455,6 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 					if not (r0 = fail) then
 
 						# If we called the recursive function for both r0 and r1
-						branch_count := branch_count + 1;
-						Print("branch, level = ", lev, "\n");
 					
 						r0_portrait := r0[1];
 						r1_portrait := r1[1];

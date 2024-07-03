@@ -113,7 +113,7 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
                 N := MaxContractingDepth(k*M);
 
                 if n <= k*M then
-                        return N;
+                        return MaxContractingDepth(n);
                 fi;
 
                 a := LogInt(n, k) + 1;
@@ -133,7 +133,7 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 		return PermGroups;
 	end;
 	
-	PermGroups := ComputePermGroups( 10 );
+	PermGroups := ComputePermGroups( 4 );
 	
 	AreNotConjugate:=function(a,b)
 		local l, Glev;
@@ -142,10 +142,9 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 			if not IsConjugate(Glev, PermOnLevel(a,l), PermOnLevel(b,l)) then
 				# Return true if NOT conjugate 
 				return true; 
-			else
-				return false;
 			fi;
 		od;
+		return false;
 	end;
 
 	# We always pass g that's even on the first level
@@ -288,6 +287,10 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 				g0_TA, g1_TA, h0_TA, portrait_depth, nucleus_element, odd_g_idxs;
 
 			odd_g_idxs := IdxsOfOdds( g_list );
+			if odd_g_idxs = [] then
+				branch_count := branch_count + 1;
+				Print("branch, level = ", lev, "\n");
+			fi;
 
 			for i in [1..Size(g_list)] do
 				if not i in odd_g_idxs then
@@ -300,6 +303,7 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 					else
 						# If ConjEven failed and we've made it thought the whole list (i.e. failed to recover r each time)
 						# return fail, otherwise go to next g_i
+						Print("ConjEven failed. g = ", g_list[i], ", h = ", h_list[i], "\n");
 						if i = Size(g_list) then
 							return fail;
 						else
@@ -441,8 +445,6 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 						if not (r0 = fail) then
 
 							# If we called the recursive function for both r0 and r1
-							branch_count := branch_count + 1;
-							Print("branch, level = ", lev, "\n");
 						
 							r0_portrait := r0[1];
 							r1_portrait := r1[1];
