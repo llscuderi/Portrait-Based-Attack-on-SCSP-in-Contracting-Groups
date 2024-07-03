@@ -105,7 +105,13 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 	local nucleus, MaxContractingDepth, M, N, placeholder, PortraitDepthUpperBound, ComputePermGroups, PermGroups, AreNotConjugate,
                 ConjugatorEvenFirstLevel, NucleusDistinctLevel, nucleus_distinct_level, N_perms, N_masks, N_portraits, NucleusElementByPermutation, 
 		NucleusElementByPortrait, ExtendPortrait, PrunePortrait, ContractingPortrait, ConjugatorPortrait, ConjugatorPortraitRecursive, 
-		size, g_len, r_len, result;
+		TestConjugatorPortrait, size, g_len, r_len, result;
+
+	if filename = "" then
+		Print("Group: ", G, "\n");
+	else
+		AppendTo(filename, "Group: ", G, "\n");
+	fi;
 
 	# --- Group-specific computations ---
 	AG_UseRewritingSystem(G);
@@ -138,7 +144,7 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 
 	placeholder := nucleus[1];
 
-	ComputePermGroups:=function(G,l)
+	ComputePermGroups:=function(l)
 		local PermGroups, i;
 		PermGroups:=[];
 
@@ -148,7 +154,7 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 		return PermGroups;
 	end;
 	
-	PermGroups := ComputePermGroups( G, 10 );
+	PermGroups := ComputePermGroups( 10 );
 	
 	AreNotConjugate:=function(a,b)
 		local l, Glev;
@@ -205,7 +211,7 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 
 	# If a nested portrait is certainly in the nucleus, identify it by permutation on nucleus_distinct_level
 	NucleusElementByPermutation := function( port )
-		local portrait_permutation;
+		local portrait_permutation, i;
 
 		portrait_permutation := PermutationOfNestedPortrait(port, nucleus_distinct_level);
 	
@@ -224,7 +230,8 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 	# function to take portrait of depth 1 ([perm, [word], [word]]) 
 	# and if it is in the nucleus, return element of nucleus
 	NucleusElementByPortrait := function( port )
-		
+	        local i;
+	
 		for i in [1..Size(nucleus)] do
 			if port = N_portraits[i] then 
 				return nucleus[i];
@@ -577,6 +584,7 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 
 			# ConjugatorPortrait returns list [ [portrait, depth], runtime, branch_count ]
 			result := ConjugatorPortrait(g_list, h_list, conj_length);
+			Add(time, result[2]);
 
 			if not result[1] = fail then
 			    r_portrait := result[1][1];
@@ -591,8 +599,9 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 			fi;
 
 		od;
-
-		return Float(successes/attempts);
+		
+		# [proportion success, average time]
+		return [ Float(successes/attempts), Float(Sum(time)/attempts) ];
 
 	end; # End of TestConjugatorPortrait
 
@@ -602,9 +611,9 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 			for r_len in r_lengths do
 				result := TestConjugatorPortrait( size, g_len, r_len);
 				if filename = "" then
-					Print("List Size: ", size, ", g Length: ", g_len, ", Conjugator Length: ", r_len, "; Result: ", result, "\n");
+					Print("List Size: ", size, ", g Length: ", g_len, ", Conjugator Length: ", r_len, "; Proportion of Success: ", result[1], ", Avg Time: ", result[2], "\n");
 				else
-					AppendTo(filename, "List Size: ", size, ", g Length: ", g_len, ", Conjugator Length: ", r_len, "; Result: ", result, "\n");
+					AppendTo(filename, "List Size: ", size, ", g Length: ", g_len, ", Conjugator Length: ", r_len, "; Proportion of Success: ", result[1], ", Avg Time: ", result[2], "\n");
 				fi;
 			od;
 		od;
@@ -709,6 +718,7 @@ TestConjugatorPortrait := function(G, list_size, g_length, conj_length, attempts
 
 		# ConjugatorPortrait returns list [ [portrait, depth], runtime, branch_count ]
 		result := ConjugatorPortrait(g_list, h_list, conj_length);
+		Add(time, result[2]);
 
 		if not result[1] = fail then
 		    r_portrait := result[1][1];
@@ -724,7 +734,8 @@ TestConjugatorPortrait := function(G, list_size, g_length, conj_length, attempts
 
 	od;
 
-	return Float(successes/attempts);
+	# [proportion success, average time]
+	return [ Float(successes/attempts), Float(Sum(time)/attempts) ];
 end;
 
 

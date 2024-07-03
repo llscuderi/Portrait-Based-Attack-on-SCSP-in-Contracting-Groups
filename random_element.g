@@ -1,22 +1,31 @@
-Random_Element := function(len , group)
+RandomElementList := function(len , group, list_size)
  
-    local i , rule, rules, rules_product, rules_equivalence, generators, family, generators, randomelt, FindSuccessors ;
+    local i , j, relations, rule, rules, rules_product, rules_equivalence, generators, family, randomelt, successors,
+		gen, rws, letter_rep, starters, element_list;
+
+    element_list := [];
     
-    # TODO: have this function generate a list of random elements (so we don't do the overhead every time)
+    AG_UseRewritingSystem(group);
+    relations := FindGroupRelations(group,3);
+
+    if not relations = [] then
+	    AG_AddRelators(group, relations);
+    fi;
+
     rws        := AG_RewritingSystem(group);
-    generators := GeneratorsOfMonoid(Image(rws!.mhom)) ;
+    generators := GeneratorsOfMonoid(Image(rws!.mhom));
  
     rules      := AG_RewritingSystemRules(group);
     rules_product := [];
     rules_equivalence := [];
-    family     := FamilyObj(rules[1][1]);
+    family     := FamilyObj(Word(One(group)));
 
     for rule in rules do
 	letter_rep := LetterRepAssocWord(rule[1]);
 	if Size(letter_rep) = 2 then
 		Add(rules_product, letter_rep);
         elif Size(letter_rep) = 1 then
-		Add(rules_equivalence, [letter_rep[1], LetterRepAssocWord(rule[2])];
+		Add(rules_equivalence, [letter_rep[1], LetterRepAssocWord(rule[2])]);
 	fi;
     od;
 
@@ -37,23 +46,57 @@ Random_Element := function(len , group)
 	RemoveSet(starters, rule[1]);
     od;
 
-    gen :=  Random(starters);
-    randomelt := [gen];
+    for i in [1..list_size] do
+	    gen :=  Random(starters);
+	    randomelt := [gen];
+	 
+	    for j in [2..len] do  
+		    gen := Random(successors[gen]);
+		    Add( randomelt, gen );
+	    od;
+
+	    # Changes from denoting generators/inverses as 1, 2, 3.. to 1, -1, 2, -2..
+	    randomelt := List( randomelt, x -> (-1)^(x + 1)*Ceil(Float(x/2)) );
+	    randomelt := List( randomelt, x -> Int(x) );
+
+	    randomelt := AssocWordByLetterRep(family, randomelt);
+	    # TODO: Representative doesn't work
+	    randomelt := Representative(randomelt, One(group));
+
+	    Add(element_list, randomelt);
+    od;
+
+    return element_list;
  
-    for i in [2..len] do 
+end;
+
+RandomElement := function(len, group)
+    return RandomElementList(len, group, 1)[1];
+end;
+
+RandomElementRandomWalk := function(len , group)
+ 
+    local i , j , generators , gen_inv , randomelt ;
+ 
+    generators := GeneratorsOfGroup(group) ;
+    gen_inv    := [] ;
+ 
+    for i in [1..Length(generators)]
         do 
-	    gen := Random(successors[gen]);
-	    Add( randomelt, gen );
+            Append(gen_inv , [(generators[i])^(-1)]);
         od;
+    Append(gen_inv , generators);
+    #Print(gen_inv , "\n") ;
 
-    # Changes from denoting generators/inverses as 1, 2, 3.. to 1, -1, 2, -2..
-    randomelt := List( randomelt, x -> (-1)^(x + 1)*Ceil(Float(x/2)) );
-    randomelt := List( randomelt, x -> Int(x) );
-
-    randomelt := AssocWordByLetterRep(family, randomelt);
-    # TODO: Representative doesn't work
-    randomelt := Representative(randomelt);
-
+ 
+    randomelt := One(group) ;
+    j         := 0 ;
+ 
+    while j < len 
+        do 
+            randomelt := randomelt * Random(gen_inv) ;
+            j := Length(Word(randomelt)) ;
+        od;
     return randomelt ;
  
 end;
