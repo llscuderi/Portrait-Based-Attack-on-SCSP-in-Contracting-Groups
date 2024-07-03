@@ -16,34 +16,6 @@
 
 # ----- Helper functions that don't need to be in ConjugatorPortrait -----
 
-# Here for testing- eventually will be the faster version
-Random_Element := function(len , group)
- 
-    local i , j , generators , gen_inv , randomelt ;
- 
-    generators := GeneratorsOfGroup(group) ;
-    gen_inv    := [] ;
- 
-    for i in [1..Length(generators)]
-        do 
-            Append(gen_inv , [(generators[i])^(-1)]);
-        od;
-    Append(gen_inv , generators);
-    #Print(gen_inv , "\n") ;
-
- 
-    randomelt := One(group) ;
-    j         := 0 ;
- 
-    while j < len 
-        do 
-            randomelt := randomelt * Random(gen_inv) ;
-            j := Length(Word(randomelt)) ;
-        od;
-    return randomelt ;
- 
-end;
-
 # Returns true if list L contains no repeat elements 
 NoRepeats := function(L)
 	local i, j, no_repeats;
@@ -61,15 +33,6 @@ NoRepeats := function(L)
 	return no_repeats;
 end;
 
-# Find maximum length of elements in the nucleus
-NucleusMaxLength := function(G)
-	local nucleus, element_lengths, M; 
-	nucleus:=FindNucleus(G)[1];
-	element_lengths:=List(nucleus, x -> Length(Word(x)));
-	M:=Maximum(element_lengths);
-
-	return M;
-end;
 
 # Returns list of indices of elements having perm (1,2) on 1st level
 IdxsOfOdds:=function(g_list)
@@ -126,21 +89,37 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 		return level;
 	end;
 
+
 	nucleus := FindNucleus(G)[1];
-	M := NucleusMaxLength(G);
+
+	# Find maximum length of elements in the nucleus
+	NucleusMaxLength := function()
+		local element_lengths, M; 
+		element_lengths:=List(nucleus, x -> Length(Word(x)));
+		M:=Maximum(element_lengths);
+
+		return M;
+	end;
+
+	M := NucleusMaxLength();
 	N := MaxContractingDepth(2*M);
 	
-	# Just using 2M depth for now
-	PortraitDepthUpperBound := function(n)
-		local a;
+        # Computes upper bound for portrait depth for an element in group G of length n
+        # uses max level at which elements of length <= k*M contract
+        PortraitDepthUpperBound := function(n, k)
+                local a, len;
 
-		if n <= 2*M then
-			return N;
-		fi;
+                M := NucleusMaxLength();
+                N := MaxContractingDepth(k*M);
 
-		a := LogInt(n, 2) + 1;
-		return N*a + N;
-	end;
+                if n <= k*M then
+                        return N;
+                fi;
+
+                a := LogInt(n, k) + 1;
+                len := Int(Ceil( Float( (k/k-1)*M ) ));
+                return N*a + MaxContractingDepth( len );
+        end;
 
 	placeholder := nucleus[1];
 
@@ -298,7 +277,8 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 		t := Runtime();
 		branch_count := 0;
 	
-		contracting_depth := PortraitDepthUpperBound(key_length);
+		contracting_depth := PortraitDepthUpperBound(key_length, 2);
+		Print("contracting depth: ", contracting_depth, "\n");
 
 		# Recursively builds portrait of conjugator from lists of conjugate pairs
 		ConjugatorPortraitRecursive :=function( g_list, h_list, lev)
@@ -572,8 +552,8 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 			Print("Attempt #", i, "\n");
 			t := Runtime();
 
-			g_list := List([1..list_size], x -> Random_Element(g_length, G));
-			r := Random_Element(conj_length, G);
+			g_list := RandomElementList(g_length, G, list_size);
+			r := RandomElement(conj_length, G);
 			Print("Time to generate elements: ", Runtime() - t, "\n");
 
 			t := Runtime();
@@ -627,72 +607,6 @@ end;
 
 # ---- Functions for testing (load CSP_attack.g first) ----
 
-N_masks := List(nucleus, x -> mask_function(x,1));
-N_portraits := List(N_masks, x -> MaskToPortrait(x, 1)); 
-
-# function to take portrait of depth 1 ([perm, [word], [word]]) 
-# and if it is in the nucleus, return element of nucleus
-NucleusElementByPortrait := function( port )
-	local i;
-	
-	for i in [1..Size(nucleus)] do
-		if port = N_portraits[i] then 
-			return nucleus[i];
-		fi;
-	od;
-
-	return fail;
-end;
-
-ExtendPortrait := function(port)
-	local depth, extended_portrait1, extended_portrait2;
-
-	if Size(port) = 1 then 
-		return [AutomPortrait(port[1]), AutomPortraitDepth(port[1])];              
-	else 
-		extended_portrait1 := ExtendPortrait(port[2]);
-		extended_portrait2 := ExtendPortrait(port[3]); 
-
-		depth := Maximum(extended_portrait1[2], extended_portrait2[2]) + 1;
-		
-		return [ [port[1], extended_portrait1[1], extended_portrait2[1]], depth ]; 
-	fi; 
-end;	
-
-PrunePortrait := function (port) 
-	local pruned_portrait, depth, pruned_1, pruned_2;                                
-
-	if Size(port) = 1 then 
-		return [port, 0]; 
-	fi;  
-
-	pruned_portrait := port;
-
-	if Size(port[2]) > 1 or Size(port[3]) > 1 then
-		pruned_1 := PrunePortrait(port[2]);
-		pruned_2 := PrunePortrait(port[3]);
-
-		depth := Maximum(pruned_1[2], pruned_2[2]) + 1;
-
-		pruned_portrait := [port[1], pruned_1[1], pruned_2[1]];
-	else
-		depth := 1; 
-	fi;      
-
-	if pruned_portrait in N_portraits then 
-		return [ [NucleusElementByPortrait(pruned_portrait)], 0 ]; 
-	fi;
-
-	return [pruned_portrait, depth]; 
-end;
-
-ContractingPortrait := function(port) 
-	local cportrait;
-	cportrait := ExtendPortrait(port);
-	cportrait := PrunePortrait(cportrait[1]);
-	return cportrait;
-end;
-
 
 # Tests the ConjugatorPortrait function in specified group G
 TestConjugatorPortrait := function(G, list_size, g_length, conj_length, attempts)
@@ -706,8 +620,8 @@ TestConjugatorPortrait := function(G, list_size, g_length, conj_length, attempts
 		Print("Attempt #", i, "\n");
 		t := Runtime();
 
-		g_list := List([1..list_size], x -> Random_Element(g_length, G));
-		r := Random_Element(conj_length, G);
+		g_list := RandomElementList(g_length, G, list_size);
+		r := RandomElement(conj_length, G);
 		Print("Time to generate elements: ", Runtime() - t, "\n");
 
 		t := Runtime();

@@ -7,46 +7,7 @@
 # -----------------------------------------------------------------------------
 
 
-# Find maximum length of elements in the nucleus
-NucleusMaxLength := function(G)
-	local nucleus, element_lengths, M; 
-	nucleus:=FindNucleus(G)[1];
-	element_lengths:=List(nucleus, x -> Length(Word(x)));
-	M:=Maximum(element_lengths);
 
-	return M;
-end;
-
-# Finds maximum level at which elements of length <= len contract to nucleus
-MaxContractingDepth := function(G, len)
-	local level, elements, elem_depths;
-	elements := ListOfElements(G, len);
-	elem_depths := List(elements, x -> AutomPortraitDepth(x));
-	level := Maximum(elem_depths);
-	return level;
-end;
-	
-# Computes upper bound for portrait depth for an element in group G of length n
-# uses max level at which elements of length <= k*M contract
-PortraitDepthUpperBound := function(G, n, k)
-	local M, N, a, len;
-
-	# Question: if we use rewriting system and pass G to another function,
-	# Does the rewriting hold? 
-	AG_UseRewritingSystem(G);
-	AG_UpdateRewritingSystem(G, 4);
-
-	M := NucleusMaxLength(G);
-	N := MaxContractingDepth(G, k*M);
-
-	if n <= k*M then
-		return N;
-	fi;
-
-	a := LogInt(n, k) + 1;
-	len := Int(Ceil( Float( (k/k-1)*M ) ));
-	return N*a + MaxContractingDepth( G, len );
-end;
 
 # Returns true if list L contains no repeat elements 
 NoRepeats := function(L)
@@ -144,12 +105,54 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 	G:= GroupOfAutomFamily( FamilyObj( g_list[1] ) );
 	nucleus := FindNucleus(G)[1];
 
+	# Find maximum length of elements in the nucleus
+	NucleusMaxLength := function(G)
+		local element_lengths, M; 
+		element_lengths:=List(nucleus, x -> Length(Word(x)));
+		M:=Maximum(element_lengths);
+
+		return M;
+	end;
+
+	# Finds maximum level at which elements of length <= len contract to nucleus
+	MaxContractingDepth := function(G, len)
+		local level, elements, elem_depths;
+		elements := ListOfElements(G, len);
+		elem_depths := List(elements, x -> AutomPortraitDepth(x));
+		level := Maximum(elem_depths);
+		return level;
+	end;
+		
+	# Computes upper bound for portrait depth for an element in group G of length n
+	# uses max level at which elements of length <= k*M contract
+	PortraitDepthUpperBound := function(G, n, k)
+		local M, N, a, len;
+
+		# Question: if we use rewriting system and pass G to another function,
+		# Does the rewriting hold? 
+		AG_UseRewritingSystem(G);
+		AG_UpdateRewritingSystem(G, 4);
+
+		M := NucleusMaxLength(G);
+		N := MaxContractingDepth(G, k*M);
+
+		if n <= k*M then
+			return N;
+		fi;
+
+		a := LogInt(n, k) + 1;
+		len := Int(Ceil( Float( (k/k-1)*M ) ));
+		return N*a + MaxContractingDepth( G, len );
+	end;
+
 	placeholder := nucleus[1];
 
 	# We precompute this list because it takes a while 
 	PermGroups := ComputePermGroups( G, 10 );
 	
 	contracting_depth := PortraitDepthUpperBound(G, key_length, 2);
+	Print("contracting depth: ", contracting_depth, "\n");
+
 
 	AreNotConjugate:=function(a,b)
 		local l, Glev;
@@ -530,6 +533,8 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 		od;	
 	end;	
 
+
+	# This is where we would take pairwise products
 	odd_g_idxs := IdxsOfOdds( g_list );
 	gh_extended := ExtendLists( g_list, h_list, odd_g_idxs );
 	g_list := gh_extended[1];
