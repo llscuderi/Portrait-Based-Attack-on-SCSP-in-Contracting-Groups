@@ -65,7 +65,7 @@ end;
 # ----------------------------------------------------------------------------------------------------
 TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_lengths, attempts, filename)
 
-	local nucleus, MaxContractingDepth, M, N, placeholder, PortraitDepthUpperBound, ComputePermGroups, PermGroups, AreNotConjugate,
+	local nucleus, MaxContractingDepth, M, N, placeholder, PortraitDepthUpperBound, ComputePermGroups, PermGroups, AreNotConjugateOnLevel,
                 ConjugatorEvenFirstLevel, NucleusDistinctLevel, nucleus_distinct_level, N_perms, N_masks, N_portraits, NucleusElementByPermutation, 
 		NucleusElementByPortrait, ExtendPortrait, PrunePortrait, ContractingPortrait, ConjugatorPortrait, ConjugatorPortraitRecursive, 
 		TestConjugatorPortrait, size, g_len, r_len, result;
@@ -123,19 +123,9 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 
 	placeholder := nucleus[1];
 
-	ComputePermGroups:=function(l)
-		local PermGroups, i;
-		PermGroups:=[];
-
-		for i in [1..l] do
-			Add(PermGroups, PermGroupOnLevel(G,i));
-		od;
-		return PermGroups;
-	end;
+	PermGroups := List([1..4], x -> PermGroupOnLevel(G,x));
 	
-	PermGroups := ComputePermGroups( 4 );
-	
-	AreNotConjugate:=function(a,b)
+	AreNotConjugateOnLevel:=function(a,b)
 		local l, Glev;
 		for l in [1..Size(PermGroups)] do
 			Glev:=PermGroups[l]; 
@@ -158,11 +148,11 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 		h1 := Section(h,2);
 
 		# Case 1: if the following aren't conjugate, r isn't even
-		if AreNotConjugate(g0,h0) or AreNotConjugate(g1,h1) then
+		if AreNotConjugateOnLevel(g0,h0) or AreNotConjugateOnLevel(g1,h1) then
 			return false;
 
 		# Case 2: if the following aren't conjugate, r is even
-		elif AreNotConjugate(g0,h1) or AreNotConjugate(g1,h0) then
+		elif AreNotConjugateOnLevel(g0,h1) or AreNotConjugateOnLevel(g1,h0) then
 			return true;
 		else
 			return fail;
@@ -303,7 +293,6 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 					else
 						# If ConjEven failed and we've made it thought the whole list (i.e. failed to recover r each time)
 						# return fail, otherwise go to next g_i
-						Print("ConjEven failed. g = ", g_list[i], ", h = ", h_list[i], "\n");
 						if i = Size(g_list) then
 							return fail;
 						else

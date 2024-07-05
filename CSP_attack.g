@@ -55,18 +55,6 @@ end;
 # ------- Functions for recovering conjugator ----------
 # ------------------------------------------------------
 
-
-ComputePermGroups:=function(G,l)
-	local PermGroups, i;
-	PermGroups:=[];
-
-	for i in [1..l] do
-		Add(PermGroups, PermGroupOnLevel(G,i));
-	od;
-	return PermGroups;
-end;
-
-
 # Returns list of indices of elements having perm (1,2) on 1st level
 IdxsOfOdds:=function(g_list)
 	local odd_idxs, i;
@@ -95,7 +83,7 @@ end;
 # ------------------------------------------------------------------------------------
 												
 ConjugatorPortrait:=function( g_list, h_list, key_length )
-	local G, nucleus, placeholder, portrait, contracting_depth, PermGroups, AreNotConjugate, ConjugatorEvenFirstLevel, 
+	local G, nucleus, placeholder, portrait, contracting_depth, PermGroups, AreNotConjugateOnLevel, ConjugatorEvenFirstLevel, 
 		NucleusDistinctLevel, nucleus_distinct_level, N_perms, N_masks, N_portraits, NucleusElementByPermutation, NucleusElementByPortrait,
 		ExtendPortrait, PrunePortrait, ContractingPortrait, ConjugatorPortraitRecursive, i, odd_g_idxs, gh_extended, t, branch_count ;
 
@@ -147,14 +135,13 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 
 	placeholder := nucleus[1];
 
-	# We precompute this list because it takes a while 
-	PermGroups := ComputePermGroups( G, 4 );
+	PermGroups := List([1..4], x -> PermGroupOnLevel(G,x));
 	
 	contracting_depth := PortraitDepthUpperBound(G, key_length, 2);
 	Print("contracting depth: ", contracting_depth, "\n");
 
 
-	AreNotConjugate:=function(a,b)
+	AreNotConjugateOnLevel:=function(a,b)
 		local l, Glev;
 		for l in [1..Size(PermGroups)] do
 			Glev:=PermGroups[l]; 
@@ -178,11 +165,11 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 		h1 := Section(h,2);
 
 		# Case 1: if the following aren't conjugate, r isn't even
-		if AreNotConjugate(g0,h0) or AreNotConjugate(g1,h1) then
+		if AreNotConjugateOnLevel(g0,h0) or AreNotConjugateOnLevel(g1,h1) then
 			return false;
 
 		# Case 2: if the following aren't conjugate, r is even
-		elif AreNotConjugate(g0,h1) or AreNotConjugate(g1,h0) then
+		elif AreNotConjugateOnLevel(g0,h1) or AreNotConjugateOnLevel(g1,h0) then
 			return true;
 		else
 			return fail;
