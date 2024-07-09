@@ -45,17 +45,23 @@ IdxsOfOdds:=function(g_list)
 	od;
 	return odd_idxs;
 end;
-	
-# Appends to g_list and h_list multiples of odd elements of the lists
-ExtendLists:=function(g_list, h_list, odd_idxs)
-	local i, j;
-	for i in [1..Size(odd_idxs)-1] do
-		for j in [i+1..Size(odd_idxs)] do
-			Add(g_list, g_list[odd_idxs[i]]*g_list[odd_idxs[j]]);
-			Add(h_list, h_list[odd_idxs[i]]*h_list[odd_idxs[j]]);
-		od;
+
+# Creates new g,h lists of length 50, with new elements multiples of number_of_factors factors of g's 	
+ExtendLists:=function(g_list, h_list, number_of_factors)
+	local new_g_list, new_h_list, i, idxs, gs, hs;
+
+	new_g_list := [];	
+	new_h_list := [];	
+
+	for i in [1..50] do
+		idxs := List( [1..number_of_factors+1], x -> Random([1..Size(g_list)]) );
+		gs := List(idxs, x -> g_list[x]);
+		hs := List(idxs, x -> h_list[x]);
+		Add(new_g_list, Product(gs));
+		Add(new_h_list, Product(hs));	
 	od;
-	return [g_list, h_list];
+
+	return [new_g_list, new_h_list];
 end;
 	
 
@@ -65,7 +71,7 @@ end;
 # ----------------------------------------------------------------------------------------------------
 TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_lengths, attempts, filename)
 
-	local nucleus, MaxContractingDepth, M, N, placeholder, PortraitDepthUpperBound, ComputePermGroups, PermGroups, AreNotConjugateOnLevel,
+	local nucleus, NucleusMaxLength, MaxContractingDepth, M, N, k, placeholder, PortraitDepthUpperBound, PermGroups, AreNotConjugateOnLevel,
                 ConjugatorEvenFirstLevel, NucleusDistinctLevel, nucleus_distinct_level, N_perms, N_masks, N_portraits, NucleusElementByPermutation, 
 		NucleusElementByPortrait, ExtendPortrait, PrunePortrait, ContractingPortrait, ConjugatorPortrait, ConjugatorPortraitRecursive, 
 		TestConjugatorPortrait, size, g_len, r_len, result;
@@ -77,12 +83,14 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 	fi;
 
 	# --- Group-specific computations ---
-	AG_UseRewritingSystem(G);
-	AG_UpdateRewritingSystem(G, 4);
 
 	# Finds maximum level at which elements of length <= len contract to nucleus
 	MaxContractingDepth := function(len)
 		local level, elements, elem_depths;
+
+		AG_UseRewritingSystem(G);
+		AG_UpdateRewritingSystem(G, 2);
+
 		elements := ListOfElements(G, len);
 		elem_depths := List(elements, x -> AutomPortraitDepth(x));
 		level := Maximum(elem_depths);
@@ -101,16 +109,16 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 		return M;
 	end;
 
+	# TODO: Make this a parameter when call to PDUB is moved out of CP
+	k := 2;
+
 	M := NucleusMaxLength();
-	N := MaxContractingDepth(2*M);
+	N := MaxContractingDepth(k*M);
 	
         # Computes upper bound for portrait depth for an element in group G of length n
         # uses max level at which elements of length <= k*M contract
-        PortraitDepthUpperBound := function(n, k)
+        PortraitDepthUpperBound := function(n)
                 local a, len;
-
-                M := NucleusMaxLength();
-                N := MaxContractingDepth(k*M);
 
                 if n <= k*M then
                         return MaxContractingDepth(n);
@@ -266,7 +274,7 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 		t := Runtime();
 		branch_count := 0;
 	
-		contracting_depth := PortraitDepthUpperBound(key_length, 2);
+		contracting_depth := PortraitDepthUpperBound(key_length);
 		Print("contracting depth: ", contracting_depth, "\n");
 
 		# Recursively builds portrait of conjugator from lists of conjugate pairs
@@ -279,7 +287,6 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 			odd_g_idxs := IdxsOfOdds( g_list );
 			if odd_g_idxs = [] then
 				branch_count := branch_count + 1;
-				Print("branch, level = ", lev, "\n");
 			fi;
 
 			for i in [1..Size(g_list)] do
@@ -334,10 +341,25 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 							fi;
 						fi;
 					od;
+							
+					# Conjugate pairs (1,1) give us no information- save time by removing
+					for i in [1..Size(g_list_r0)] do
+						if IsOne(g_list_r0[i]) then 
+							Unbind(g_list_r0[i]);
+							Unbind(h_list_r0[i]);
+						fi;
+					od;
 
-					
-					# Recursive step: recover portrait of r0
-					r0 := ConjugatorPortraitRecursive( g_list_r0, h_list_r0, lev+1);
+					g_list_r0 := Compacted(g_list_r0);
+					h_list_r0 := Compacted(h_list_r0);
+
+					if g_list_r0 = [] then
+						# We can't recover r0 with all identities (and shouldn't bother trying)
+						r0 := fail;
+					else
+						# Recursive step: recover portrait of r0
+						r0 := ConjugatorPortraitRecursive( g_list_r0, h_list_r0, lev+1);
+					fi;
 
 					# Now to recover r1
 					if not ((r0 = fail) or (Size(odd_g_idxs) = 0)) then
@@ -421,8 +443,24 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 							fi;	
 						od;
 
-						# Recursive step: recover portrait of r1
-						r1 := ConjugatorPortraitRecursive( g_list_r1, h_list_r1, lev+1);
+						# Conjugate pairs (1,1) give us no information
+						for i in [1..Size(g_list_r1)] do
+							if IsOne(g_list_r1[i]) then 
+								Unbind(g_list_r1[i]);
+								Unbind(h_list_r1[i]);
+							fi;
+						od;
+
+						g_list_r1 := Compacted(g_list_r1);
+						h_list_r1 := Compacted(h_list_r1);
+
+						if g_list_r1 = [] then
+							# We can't recover r0 with all identities (and shouldn't bother trying)
+							r1 := fail;
+						else
+							# Recursive step: recover portrait of r1
+							r1 := ConjugatorPortraitRecursive( g_list_r1, h_list_r1, lev+1);
+						fi;
 
 						# At this point, if we don't have r1, we don't have r
 						if r1 = fail then
@@ -516,11 +554,6 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 			od;	
 		end; # End of ConjugatorPortraitRecursive	
 
-		odd_g_idxs := IdxsOfOdds( g_list );
-		gh_extended := ExtendLists( g_list, h_list, odd_g_idxs );
-		g_list := gh_extended[1];
-		h_list := gh_extended[2];
-
 		portrait := ConjugatorPortraitRecursive( g_list, h_list, 1);
 
 		# Approximate running time of call to ConjugatorPortrait
@@ -533,7 +566,7 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 	# --- testing ---
 
 	TestConjugatorPortrait := function(list_size, g_length, conj_length)
-		local successes, i, g_list, r, h_list, result, r_portrait, depth, time, branches, t;
+		local successes, i, g_list, r, h_list, gh_extended, result, r_portrait, depth, time, branches, t;
 		successes := 0;
 		time := [];
 		branches := [];
@@ -552,6 +585,20 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 			h_list := List(g_list, x -> r^-1*x*r);
 			Print("Time to conjugate elements: ", Runtime() -t, "\n");
 
+			t := Runtime();
+
+			if g_length <= conj_length then
+				gh_extended := ExtendLists( g_list, h_list, Int(Ceil(Float(conj_length/g_length))) );
+				g_list := gh_extended[1];
+				h_list := gh_extended[2];
+
+			elif list_size < 50 then
+				gh_extended := ExtendLists( g_list, h_list, 2 );
+				g_list := gh_extended[1];
+				h_list := gh_extended[2];
+			fi;	
+
+			Print("Time to extend lists: ", Runtime() -t, "\n");
 
 			# ConjugatorPortrait returns list [ [portrait, depth], runtime, branch_count ]
 			result := ConjugatorPortrait(g_list, h_list, conj_length);

@@ -4,9 +4,11 @@ RandomElementList := function(len , group, list_size)
 		gen, rws, letter_rep, starters, element_list;
 
     element_list := [];
-    
+   
     AG_UseRewritingSystem(group);
-    relations := FindGroupRelations(group,3);
+    relations := FindGroupRelations(group,2);
+
+    relations := Filtered(relations, x -> (Length(Word(x)) <= 3) ); 
 
     if not relations = [] then
 	    AG_AddRelators(group, relations);

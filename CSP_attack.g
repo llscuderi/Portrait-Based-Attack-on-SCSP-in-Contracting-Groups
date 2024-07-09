@@ -30,26 +30,26 @@ end;
 # For group G and fixed n, returns k between 2 and 4 for which
 # MaxPortraitDepth( G, n, k) is minimized 
 # Want to minimize N_k/(log_2(k)) (this is for large n)
-MinimizeMaxDepth := function(G)
-	local k, min, ratio, min_k, M, logn;
-		
-	M := NucleusMaxLength(G);
-	min := Float(MaxContractingDepth(G, 2*M)); 
-	min_k := 2;
-	Print("k = ", min_k, ", ratio = ", min, "\n");
-	
-	# Warning: This takes a long time	
-	for k in [3..4] do
-		ratio := Float(MaxContractingDepth(G, k*M))/Log2(Float(k));
-		Print("k = ", k, ", ratio = ", ratio, "\n");
-		if ratio < min then
-			min := ratio;
-			min_k := k;
-		fi;
-	od;
-		
-	return min_k;
-end;
+#MinimizeMaxDepth := function(G)
+#	local k, min, ratio, min_k, M, logn;
+#		
+#	M := NucleusMaxLength(G);
+#	min := Float(MaxContractingDepth(G, 2*M)); 
+#	min_k := 2;
+#	Print("k = ", min_k, ", ratio = ", min, "\n");
+#	
+#	# Warning: This takes a long time	
+#	for k in [3..4] do
+#		ratio := Float(MaxContractingDepth(G, k*M))/Log2(Float(k));
+#		Print("k = ", k, ", ratio = ", ratio, "\n");
+#		if ratio < min then
+#			min := ratio;
+#			min_k := k;
+#		fi;
+#	od;
+#		
+#	return min_k;
+#end;
 
 # ------------------------------------------------------
 # ------- Functions for recovering conjugator ----------
@@ -66,31 +66,41 @@ IdxsOfOdds:=function(g_list)
 	od;
 	return odd_idxs;
 end;
-	
-# Appends to g_list and h_list multiples of odd elements of the lists
-ExtendLists:=function(g_list, h_list, odd_idxs)
-	local i, j;
-	for i in [1..Size(odd_idxs)-1] do
-		for j in [i+1..Size(odd_idxs)] do
-			Add(g_list, g_list[odd_idxs[i]]*g_list[odd_idxs[j]]);
-			Add(h_list, h_list[odd_idxs[i]]*h_list[odd_idxs[j]]);
-		od;
-	od;
-	return [g_list, h_list];
-end;
 
+# Creates new g,h lists of length 50, with new elements multiples of number_of_factors factors of g's 	
+ExtendLists:=function(g_list, h_list, number_of_factors)
+	local new_g_list, new_h_list, i, idxs, gs, hs;
+
+	new_g_list := [];	
+	new_h_list := [];	
+
+	for i in [1..50] do
+		idxs := List( [1..number_of_factors+1], x -> Random([1..Size(g_list)]) );
+		Print("idxs of g_i in word #", i, " of extended list: ", idxs, "\n");
+		gs := List(idxs, x -> g_list[x]);
+		hs := List(idxs, x -> h_list[x]);
+		Add(new_g_list, Product(gs));
+		Add(new_h_list, Product(hs));	
+	od;
+
+	return [new_g_list, new_h_list];
+end;
 
 # ------------------------------------------------------------------------------------
 												
-ConjugatorPortrait:=function( g_list, h_list, key_length )
-	local G, nucleus, placeholder, portrait, contracting_depth, PermGroups, AreNotConjugateOnLevel, ConjugatorEvenFirstLevel, 
-		NucleusDistinctLevel, nucleus_distinct_level, N_perms, N_masks, N_portraits, NucleusElementByPermutation, NucleusElementByPortrait,
-		ExtendPortrait, PrunePortrait, ContractingPortrait, ConjugatorPortraitRecursive, i, odd_g_idxs, gh_extended, t, branch_count ;
+ConjugatorPortrait:=function( g_list, h_list, key_length, extend )
+	local G, nucleus, NucleusMaxLength, MaxContractingDepth, PortraitDepthUpperBound, placeholder, portrait, contracting_depth, PermGroups, 
+		AreNotConjugateOnLevel, ConjugatorEvenFirstLevel, NucleusDistinctLevel, nucleus_distinct_level, N_perms, N_masks,
+		N_portraits, NucleusElementByPermutation, NucleusElementByPortrait,ExtendPortrait, PrunePortrait, ContractingPortrait, 
+		ConjugatorPortraitRecursive, i, odd_g_idxs, gh_extended, t, branch_count ;
 
 	t := Runtime();
 	branch_count := 0;
 	
 	G:= GroupOfAutomFamily( FamilyObj( g_list[1] ) );
+	AG_UseRewritingSystem(G);
+	AG_UpdateRewritingSystem(G, 2);
+
 	nucleus := FindNucleus(G)[1];
 
 	# Find maximum length of elements in the nucleus
@@ -115,11 +125,6 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 	# uses max level at which elements of length <= k*M contract
 	PortraitDepthUpperBound := function(G, n, k)
 		local M, N, a, len;
-
-		# Question: if we use rewriting system and pass G to another function,
-		# Does the rewriting hold? 
-		AG_UseRewritingSystem(G);
-		AG_UpdateRewritingSystem(G, 4);
 
 		M := NucleusMaxLength(G);
 		N := MaxContractingDepth(G, k*M);
@@ -341,9 +346,18 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 						fi;
 					fi;
 				od;
-
-				Print("g list for r0: ", g_list_r0, "\n");
 				
+				# Conjugate pairs (1,1) give us no information
+				for i in [1..Size(g_list_r0)] do
+					if IsOne(g_list_r0[i]) then 
+						Unbind(g_list_r0[i]);
+						Unbind(h_list_r0[i]);
+					fi;
+				od;
+
+				g_list_r0 := Compacted(g_list_r0);
+				h_list_r0 := Compacted(h_list_r0);
+
 				# Recursive step: recover portrait of r0
 				r0 := ConjugatorPortraitRecursive( g_list_r0, h_list_r0, lev+1);
 
@@ -429,6 +443,18 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 						fi;	
 					od;
 
+					# Conjugate pairs (1,1) give us no information
+					for i in [1..Size(g_list_r1)] do
+						if IsOne(g_list_r1[i]) then 
+							Unbind(g_list_r1[i]);
+							Unbind(h_list_r1[i]);
+						fi;
+					od;
+
+					g_list_r1 := Compacted(g_list_r1);
+					h_list_r1 := Compacted(h_list_r1);
+	
+
 					# Recursive step: recover portrait of r1
 					r1 := ConjugatorPortraitRecursive( g_list_r1, h_list_r1, lev+1);
 
@@ -442,7 +468,7 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 					if not (r0 = fail) then
 
 						# If we called the recursive function for both r0 and r1
-					
+						Print("Successfully called recursive function for both r0 and r1\n");	
 						r0_portrait := r0[1];
 						r1_portrait := r1[1];
 						
@@ -525,11 +551,11 @@ ConjugatorPortrait:=function( g_list, h_list, key_length )
 	end;	
 
 
-	# This is where we would take pairwise products
-	odd_g_idxs := IdxsOfOdds( g_list );
-	gh_extended := ExtendLists( g_list, h_list, odd_g_idxs );
-	g_list := gh_extended[1];
-	h_list := gh_extended[2];
+	if extend then
+		gh_extended := ExtendLists( g_list, h_list, Int(Ceil(Float( key_length/Length(Word(g)) ))) );
+		g_list := gh_extended[1];
+		h_list := gh_extended[2];
+	fi;
 
 	portrait := ConjugatorPortraitRecursive( g_list, h_list, 1);
 
