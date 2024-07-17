@@ -54,7 +54,7 @@ ExtendLists:=function(g_list, h_list, number_of_factors)
 	new_h_list := [];	
 
 	for i in [1..50] do
-		idxs := List( [1..number_of_factors+1], x -> Random([1..Size(g_list)]) );
+		idxs := List( [1..number_of_factors], x -> Random([1..Size(g_list)]) );
 		gs := List(idxs, x -> g_list[x]);
 		hs := List(idxs, x -> h_list[x]);
 		Add(new_g_list, Product(gs));
@@ -69,17 +69,20 @@ end;
 # ----------------------------------------------------------------------------------------------------
 # ------------------------- Testing Function for Lists of Parameters----------------------------------
 # ----------------------------------------------------------------------------------------------------
-TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_lengths, attempts, filename)
+TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_lengths, attempts, k, filename)
 
-	local nucleus, NucleusMaxLength, MaxContractingDepth, M, N, k, placeholder, PortraitDepthUpperBound, PermGroups, AreNotConjugateOnLevel,
+	local nucleus, NucleusMaxLength, MaxContractingDepth, M, N, placeholder, PortraitDepthUpperBound, contracting_depth, PermGroups, AreNotConjugateOnLevel,
                 ConjugatorEvenFirstLevel, NucleusDistinctLevel, nucleus_distinct_level, N_perms, N_masks, N_portraits, NucleusElementByPermutation, 
 		NucleusElementByPortrait, ExtendPortrait, PrunePortrait, ContractingPortrait, ConjugatorPortrait, ConjugatorPortraitRecursive, 
 		TestConjugatorPortrait, size, g_len, r_len, result;
 
 	if filename = "" then
 		Print("Group: ", G, "\n");
+		Print("k = ", k, "\n");
 	else
 		AppendTo(filename, "Group: ", G, "\n");
+		AppendTo(filename, "k = ", k, "\n");
+		AppendTo(filename, "\n");
 	fi;
 
 	# --- Group-specific computations ---
@@ -109,16 +112,40 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 		return M;
 	end;
 
-	# TODO: Make this a parameter when call to PDUB is moved out of CP
-	k := 2;
 
 	M := NucleusMaxLength();
-	N := MaxContractingDepth(k*M);
+
+	# For testing different k values: use precomputed N if we have it
+	if G = AG_Groups.Basilica and (k=2 or k=4) then
+		if k = 2 then
+			N := 4;
+		else # k = 4
+			N := 6; 
+		fi;
+	elif AutomatonList(G) = AutomatonList(AutomatonGroup("a=(a,a)(1,2), b=(c,b), c=(a,a)")) and (k=2 or k=5) then # If G is Ag775
+		if k = 2 then
+			N := 5;
+		else # k = 5
+			N := 7;
+		fi;
+	elif AutomatonList(G) = AutomatonList(AutomatonGroup("a=(a,a)(1,2), b=(c,a)(1,2), c=(b,a)")) then # If G is Ag2287
+		# Do nothing - we don't use N for this group
+	else
+		N := MaxContractingDepth(k*M);
+	fi;
 	
         # Computes upper bound for portrait depth for an element in group G of length n
         # uses max level at which elements of length <= k*M contract
         PortraitDepthUpperBound := function(n)
                 local a, len;
+
+		if AutomatonList(G) = AutomatonList(AutomatonGroup("a=(a,a)(1,2), b=(c,a)(1,2), c=(b,a)")) then # If G is Ag2287
+			if n <= 10000 then
+				return 15;
+			else
+				Error("Contracting depth for l(r) > 10000 in Ag2287 unknown");
+			fi;
+		fi;
 
                 if n <= k*M then
                         return MaxContractingDepth(n);
@@ -270,11 +297,10 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 	# --- recovering conjugator ---
 
 	ConjugatorPortrait:=function( g_list, h_list, key_length )
-		local t, branch_count, contracting_depth, odd_g_idxs, gh_extended, portrait;
+		local t, branch_count, odd_g_idxs, gh_extended, portrait;
 		t := Runtime();
 		branch_count := 0;
 	
-		contracting_depth := PortraitDepthUpperBound(key_length);
 		Print("contracting depth: ", contracting_depth, "\n");
 
 		# Recursively builds portrait of conjugator from lists of conjugate pairs
@@ -283,6 +309,7 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 			local i, ConjEven, perm, g_list_r0, h_list_r0, g_list_r1, h_list_r1, r0, r1,
 				r0_portrait, r1_portrait, contracting_portrait, r0_mask, r1_mask, odd_g, odd_h, r0_TA, r1_TA, 
 				g0_TA, g1_TA, h0_TA, portrait_depth, nucleus_element, odd_g_idxs;
+
 
 			odd_g_idxs := IdxsOfOdds( g_list );
 			if odd_g_idxs = [] then
@@ -566,7 +593,7 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 	# --- testing ---
 
 	TestConjugatorPortrait := function(list_size, g_length, conj_length)
-		local successes, i, g_list, r, h_list, gh_extended, result, r_portrait, depth, time, branches, t;
+		local successes, i, g_list, r, h_list, gh_extended, number_of_factors, result, r_portrait, depth, time, branches, t;
 		successes := 0;
 		time := [];
 		branches := [];
@@ -588,15 +615,19 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 			t := Runtime();
 
 			if g_length <= conj_length then
-				gh_extended := ExtendLists( g_list, h_list, Int(Ceil(Float(conj_length/g_length))) );
+				# how many g's do we need to multiply for a g as long as the conjugator?
+				number_of_factors := Int(Ceil(Float(conj_length/g_length))); 
+				# Pass n_o_f + ( n_o_f mod 2 ) so that if our list is all odds, we get all evens instead
+				gh_extended := ExtendLists( g_list, h_list, number_of_factors + (number_of_factors mod 2) );
 				g_list := gh_extended[1];
 				h_list := gh_extended[2];
 
 			elif list_size < 50 then
 				gh_extended := ExtendLists( g_list, h_list, 2 );
-				g_list := gh_extended[1];
-				h_list := gh_extended[2];
-			fi;	
+				# (also means that we double the length when g_length = conj_length)
+				Append( g_list, gh_extended[1] );
+				Append( h_list, gh_extended[2] );
+			fi;
 
 			Print("Time to extend lists: ", Runtime() -t, "\n");
 
@@ -627,6 +658,7 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 	for size in list_sizes do
 		for g_len in g_lengths do
 			for r_len in r_lengths do
+				contracting_depth := PortraitDepthUpperBound(r_len);
 				result := TestConjugatorPortrait( size, g_len, r_len);
 				if filename = "" then
 					Print("List Size: ", size, ", g Length: ", g_len, ", Conjugator Length: ", r_len, "; Proportion of Success: ", result[1], ", Avg Time: ", result[2], "\n");

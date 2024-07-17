@@ -75,8 +75,7 @@ ExtendLists:=function(g_list, h_list, number_of_factors)
 	new_h_list := [];	
 
 	for i in [1..50] do
-		idxs := List( [1..number_of_factors+1], x -> Random([1..Size(g_list)]) );
-		Print("idxs of g_i in word #", i, " of extended list: ", idxs, "\n");
+		idxs := List( [1..number_of_factors], x -> Random([1..Size(g_list)]) );
 		gs := List(idxs, x -> g_list[x]);
 		hs := List(idxs, x -> h_list[x]);
 		Add(new_g_list, Product(gs));
@@ -92,7 +91,7 @@ ConjugatorPortrait:=function( g_list, h_list, key_length, extend )
 	local G, nucleus, NucleusMaxLength, MaxContractingDepth, PortraitDepthUpperBound, placeholder, portrait, contracting_depth, PermGroups, 
 		AreNotConjugateOnLevel, ConjugatorEvenFirstLevel, NucleusDistinctLevel, nucleus_distinct_level, N_perms, N_masks,
 		N_portraits, NucleusElementByPermutation, NucleusElementByPortrait,ExtendPortrait, PrunePortrait, ContractingPortrait, 
-		ConjugatorPortraitRecursive, i, odd_g_idxs, gh_extended, t, branch_count ;
+		ConjugatorPortraitRecursive, i, odd_g_idxs, gh_extended, t, branch_count, number_of_factors ;
 
 	t := Runtime();
 	branch_count := 0;
@@ -552,9 +551,10 @@ ConjugatorPortrait:=function( g_list, h_list, key_length, extend )
 
 
 	if extend then
-		gh_extended := ExtendLists( g_list, h_list, Int(Ceil(Float( key_length/Length(Word(g)) ))) );
-		g_list := gh_extended[1];
-		h_list := gh_extended[2];
+		number_of_factors := Int(Ceil(Float( key_length/Length(Word(g)) ))); 
+		gh_extended := ExtendLists( g_list, h_list, number_of_factors + (number_of_factors mod 2));
+		Append( g_list, gh_extended[1] );
+		Append( h_list, gh_extended[2] );
 	fi;
 
 	portrait := ConjugatorPortraitRecursive( g_list, h_list, 1);
