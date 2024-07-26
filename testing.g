@@ -140,8 +140,12 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
                 local a, len;
 
 		if AutomatonList(G) = AutomatonList(AutomatonGroup("a=(a,a)(1,2), b=(c,a)(1,2), c=(b,a)")) then # If G is Ag2287
-			if n <= 10000 then
-				return 15;
+			if n <= 100 then
+				return 18;
+			elif n <= 1000 then
+				return 19;
+			elif n <= 10000 then
+				return 22;
 			else
 				Error("Contracting depth for l(r) > 10000 in Ag2287 unknown");
 			fi;
@@ -619,8 +623,8 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 				number_of_factors := Int(Ceil(Float(conj_length/g_length))); 
 				# Pass n_o_f + ( n_o_f mod 2 ) so that if our list is all odds, we get all evens instead
 				gh_extended := ExtendLists( g_list, h_list, number_of_factors + (number_of_factors mod 2) );
-				g_list := gh_extended[1];
-				h_list := gh_extended[2];
+				Append( g_list, gh_extended[1] );
+				Append( h_list, gh_extended[2] );
 
 			elif list_size < 50 then
 				gh_extended := ExtendLists( g_list, h_list, 2 );
@@ -630,6 +634,7 @@ TestConjugatorPortraitForParameters := function(G, list_sizes, g_lengths, r_leng
 			fi;
 
 			Print("Time to extend lists: ", Runtime() -t, "\n");
+
 
 			# ConjugatorPortrait returns list [ [portrait, depth], runtime, branch_count ]
 			result := ConjugatorPortrait(g_list, h_list, conj_length);
